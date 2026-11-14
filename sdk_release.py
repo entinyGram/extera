@@ -19,7 +19,7 @@ import sys
 import tempfile
 import zipfile
 
-URL = "https://github.com/entaytion/entinyGram/releases/download/sdk/sdk-{version}.zip"
+URL = "https://github.com/entinyGram/plugins/releases/download/python-sdk/sdk-{version}.zip"
 PAYLOAD = "entiny-pysdk|{version}|{sha256}"
 ALLOWED = {".py", ".txt", ".json"}
 
