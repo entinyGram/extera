@@ -58,6 +58,9 @@ def main():
     args.output.mkdir(parents=True, exist_ok=True)
     venv = workspace / 'venv'
     python = venv / ('Scripts/python.exe' if os.name == 'nt' else 'bin/python')
+    probe = f'import sys; assert sys.version_info[:2] == ({sys.version_info.major}, {sys.version_info.minor})'
+    if python.exists() and subprocess.run([str(python), '-c', probe], capture_output=True).returncode:
+        shutil.rmtree(venv)
     if not python.exists():
         run(sys.executable, '-m', 'venv', venv)
     installed = subprocess.run([str(python), '-c', 'import Cython; assert Cython.__version__ == "3.0.11"'], capture_output=True)
@@ -80,6 +83,12 @@ def main():
             raise RuntimeError('Install Android SDK CMake with Ninja or add ninja to PATH')
         ninja = Path(found)
     build = workspace / 'cmake'
+    stamp = f'{source}|{args.python_version}|{args.abi}|{args.ndk.resolve()}'
+    marker = build / 'entiny-stamp'
+    if build.exists() and (not marker.exists() or marker.read_text(encoding='utf-8') != stamp):
+        shutil.rmtree(build)
+    build.mkdir(parents=True, exist_ok=True)
+    (build / 'entiny-stamp').write_text(stamp, encoding='utf-8')
     run(cmake, '-S', source, '-B', build, '-G', 'Ninja', f'-DCMAKE_MAKE_PROGRAM={ninja.as_posix()}',
         '-DCMAKE_POLICY_VERSION_MINIMUM=3.5', '-DCMAKE_BUILD_TYPE=Release',
         f'-DCHAQUOPY_SRC_DIR={generated.as_posix()}',

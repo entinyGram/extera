@@ -176,6 +176,12 @@ describe("overlay", () => {
     expect(read("src/Config.kt").toString()).toBe("val ready = false\r\nval python = true\r\n");
   });
 
+  test("generated engine files are always refreshed", () => {
+    write(path.join(repo, "extera-plugins/engine/Engine.java"), "stale output from an older overlay\n");
+    install();
+    expect(read("extera-plugins/engine/Engine.java").toString()).toContain("adapted();");
+  });
+
   test("ambiguous anchor aborts before any write", () => {
     write(path.join(repo, "src/Config.kt"), "val ready = false\nval ready = false\n");
     const before = snapshot();

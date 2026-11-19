@@ -373,7 +373,8 @@ export function buildPlan(repo: string, bundle: string, manifest: Manifest, upst
     const original = formatLike(vendored.get(target) ?? wanted, current);
     const previous = new Set(allowed.get(target) ?? []);
     if (installed[target]) previous.add(installed[target]);
-    if (current !== null && !current.equals(content) && !current.equals(original) && !previous.has(digest(current))) {
+    const generated = target.startsWith("extera-plugins/engine/");
+    if (!generated && current !== null && !current.equals(content) && !current.equals(original) && !previous.has(digest(current))) {
       throw new InstallError(`unknown existing content: ${target}`);
     }
     const key = win ? file.toLowerCase() : file;
