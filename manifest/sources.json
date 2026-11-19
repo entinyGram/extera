@@ -1,0 +1,14 @@
+{
+  "upstream": {
+    "url": "https://github.com/exteraless/exteraless.git",
+    "commit": "c83765c4151d50ba514325ddf0a3262769729dc6"
+  },
+  "runtime_upstream": {
+    "url": "https://github.com/exteraless/chaquopy.git",
+    "commit": "eab341a401913ac50254ff20e9efeebeaae872ef"
+  },
+  "host": {
+    "commit": "3ab9e0ebcc8046beb3be8dd4d6e2c9560fd4f446",
+    "stock_commit": "6207583fae"
+  }
+}

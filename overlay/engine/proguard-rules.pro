@@ -1,0 +1,12 @@
+-keep class app.exteraless.plugins.** { *; }
+-keep class app.exteraless.debug.** { *; }
+-keep class com.exteragram.messenger.plugins.** { *; }
+-keep class org.telegram.ui.Wallet.WalletPluginFreeze { *; }
+-keep class tw.nekomimi.nekogram.helpers.AppRestartHelper { *; }
+-keep class de.robv.android.xposed.** { *; }
+-dontwarn javax.script.**
+-dontwarn org.mvel2.jsr223.**
+-keep class org.telegram.messenger.R { *; }
+-keep class org.telegram.messenger.R$* { *; }
+-keep class com.exteragram.messenger.** { *; }
+-keep class app.exteraless.components.** { *; }

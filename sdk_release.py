@@ -59,10 +59,10 @@ def main():
         sys.exit("version must look like 1.0.1")
     if not args.key.is_file():
         sys.exit(f"no key at {args.key}")
-    out = here / "out"
+    out = here / "var" / "out" / "sdk"
     out.mkdir(parents=True, exist_ok=True)
     zip_path = out / f"sdk-{args.version}.zip"
-    count = pack(here / "sdk", zip_path)
+    count = pack(here / "engine" / "python", zip_path)
     sha256 = hashlib.sha256(zip_path.read_bytes()).hexdigest()
     manifest = {"stable": {"version": args.version, "url": URL.format(version=args.version), "sha256": sha256,
                            "signature": sign(args.key, args.version, sha256)}}

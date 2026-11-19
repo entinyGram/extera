@@ -1,0 +1,85 @@
+def engineRoot = file('../../extera-plugins/engine')
+def enginePython = System.getenv('CHAQUOPY_BUILD_PYTHON') ?: 'python'
+
+android.sourceSets.main.java.srcDir new File(engineRoot, 'java')
+def legacyJavaRoot = file('src/main/java').absolutePath.replace('\\', '/') + '/'
+android.sourceSets.main.java.exclude { entry ->
+    def path = entry.file.absolutePath.replace('\\', '/')
+    path.startsWith(legacyJavaRoot) && ['app/exteraless/', 'com/exteragram/', 'tw/nekomimi/', 'org/telegram/ui/Wallet/WalletPluginFreeze.java'].any {
+        path.substring(legacyJavaRoot.length()).startsWith(it)
+    }
+}
+android.sourceSets.main.python.srcDirs = [new File(engineRoot, 'python')]
+android.buildTypes.configureEach {
+    proguardFile new File(engineRoot, 'proguard-rules.pro')
+}
+
+afterEvaluate {
+    def pythonVersion = '3.13'
+    def commonClass = plugins.getPlugin('com.chaquo.python').class.classLoader.loadClass('com.chaquo.python.internal.Common')
+    def target = commonClass.getField('PYTHON_VERSIONS').get(null).find { it.key.startsWith(pythonVersion + '.') }
+    if (target == null) throw new GradleException("Chaquopy has no Python ${pythonVersion} runtime")
+    def abis = android.defaultConfig.ndk.abiFilters.sort(false)
+    if (abis.isEmpty() || abis.any { !(it in ['arm64-v8a', 'x86_64']) }) {
+        throw new GradleException('Python plugins require ABI_FILTERS=arm64-v8a or x86_64')
+    }
+    def runtimeOutput = layout.buildDirectory.dir('exteraPython/runtime').get().asFile
+    def runtimeTasks = abis.collect { abi ->
+        tasks.register("buildEntinyPythonRuntime${abi.replace('-', '_')}", Exec) {
+            def targetZip = configurations.detachedConfiguration(dependencies.create(
+                    "com.chaquo.python:target:${target.key}-${target.value}:${abi}@zip"))
+            def out = new File(runtimeOutput, abi)
+            inputs.dir(new File(engineRoot, 'chaquopy/product/runtime'))
+            inputs.file(new File(engineRoot, 'build_runtime.py'))
+            inputs.files(targetZip)
+            outputs.dir(out)
+            doFirst {
+                commandLine enginePython, new File(engineRoot, 'build_runtime.py').absolutePath,
+                        '--source', new File(engineRoot, 'chaquopy/product/runtime').absolutePath,
+                        '--workspace', layout.buildDirectory.dir("exteraPython/work/${abi}").get().asFile.absolutePath,
+                        '--output', out.absolutePath, '--abi', abi, '--python-version', pythonVersion,
+                        '--target-zip', targetZip.singleFile.absolutePath,
+                        '--ndk', androidComponents.sdkComponents.ndkDirectory.get().asFile.absolutePath,
+                        '--sdk', androidComponents.sdkComponents.sdkDirectory.get().asFile.absolutePath
+            }
+        }
+    }
+    tasks.configureEach { task ->
+        if (task.name ==~ /generate\w+PythonMiscAssets|generate\w+PythonJniLibs/) {
+            task.dependsOn(runtimeTasks)
+            task.inputs.files(runtimeTasks)
+            task.doLast {
+                abis.each { abi ->
+                    def misc = task.name.endsWith('PythonMiscAssets')
+                    def destination = new File(task.outputDir, misc ? "chaquopy/bootstrap-native/${abi}/java" : abi)
+                    if (!destination.isDirectory()) throw new GradleException("Missing Chaquopy output: ${destination}")
+                    copy {
+                        from new File(runtimeOutput, "${abi}/${misc ? 'chaquopy.so' : 'libchaquopy_java.so'}")
+                        into destination
+                    }
+                }
+            }
+        }
+    }
+}
+
+// entiny: exteraGram plugins ship native libs linked against the shared STL, stock builds only c++_static
+def stlRoot = layout.buildDirectory.dir('exteraStl').get().asFile
+android.sourceSets.main.jniLibs.srcDirs += stlRoot
+afterEvaluate {
+    def stlAbis = android.defaultConfig.ndk.abiFilters.sort(false)
+    def stlTask = tasks.register('copyEntinySharedStl') {
+        doLast {
+            def triples = ['arm64-v8a': 'aarch64-linux-android', 'x86_64': 'x86_64-linux-android']
+            def ndk = androidComponents.sdkComponents.ndkDirectory.get().asFile
+            stlAbis.each { abi ->
+                def source = fileTree(ndk) {
+                    include "toolchains/llvm/prebuilt/*/sysroot/usr/lib/${triples[abi]}/libc++_shared.so"
+                }.files.find { true }
+                if (source == null) throw new GradleException("libc++_shared.so not found for ${abi}")
+                copy { from source; into new File(stlRoot, abi) }
+            }
+        }
+    }
+    tasks.matching { it.name ==~ /merge.*JniLibFolders/ }.configureEach { dependsOn stlTask }
+}

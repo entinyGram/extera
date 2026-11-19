@@ -1,0 +1,247 @@
+{
+  "edits": [
+    {
+      "path": "src/fork/ui/settings/PluginInstallSheet.kt",
+      "before": "        private const val GRANT_BASE = 20000\n        private const val DROPPED_GRANT_BASE = 21000",
+      "after": "        private const val GRANT_BASE = 20000\n        private const val EXTERNAL_GRANT_BASE = 23000\n        private const val DROPPED_GRANT_BASE = 21000"
+    },
+    {
+      "path": "src/fork/ui/settings/PluginInstallSheet.kt",
+      "before": "import org.telegram.ui.Cells.TextCell\nimport org.telegram.ui.Components.BottomSheetWithRecyclerListView",
+      "after": "import org.telegram.ui.Cells.NotificationsCheckCell\nimport org.telegram.ui.Cells.TextCell\nimport org.telegram.ui.Components.BottomSheetWithRecyclerListView"
+    },
+    {
+      "path": "src/fork/ui/settings/PluginInstallSheet.kt",
+      "before": "class PluginInstallSheet(\n    context: Context,",
+      "after": "data class ExternalInstallPermission(val key: String, val title: CharSequence, val info: CharSequence, val selected: Boolean = false)\n\nclass PluginInstallSheet(\n    context: Context,"
+    },
+    {
+      "path": "src/fork/ui/settings/PluginInstallSheet.kt",
+      "before": "    previous: PluginManifest? = null,\n    onInstall: (enable: Boolean) -> Unit,\n) : BottomSheetWithRecyclerListView(",
+      "after": "    previous: PluginManifest? = null,\n    externalPermissions: List<ExternalInstallPermission>? = null,\n    externalWarning: CharSequence? = null,\n    onExternalInstall: ((List<String>, Boolean) -> Unit)? = null,\n    onInstall: (enable: Boolean) -> Unit,\n) : BottomSheetWithRecyclerListView("
+    },
+    {
+      "path": "src/fork/ui/settings/PluginInstallSheet.kt",
+      "before": "        val previous: PluginManifest?,\n    )",
+      "after": "        val previous: PluginManifest?,\n        val externalPermissions: List<ExternalInstallPermission>?,\n        val externalWarning: CharSequence?,\n        val onExternalInstall: ((List<String>, Boolean) -> Unit)?,\n    )"
+    },
+    {
+      "path": "src/fork/ui/settings/PluginInstallSheet.kt",
+      "before": "    private val content: Content? = Content(manifest, source, assets, obfuscation, fragment, previous)",
+      "after": "    private val content: Content? = Content(manifest, source, assets, obfuscation, fragment, previous, externalPermissions, externalWarning, onExternalInstall)"
+    },
+    {
+      "path": "src/fork/ui/settings/PluginInstallSheet.kt",
+      "before": "    private val grantRows = HashMap<Int, GrantRowView>()\n    private var enableNow = true",
+      "after": "    private val grantRows = HashMap<Int, GrantRowView>()\n    private val externalRows = HashMap<Int, android.view.View>()\n    private val selectedExternal = linkedSetOf<String>()\n    private var enableNow = true"
+    },
+    {
+      "path": "src/fork/ui/settings/PluginInstallSheet.kt",
+      "before": "    init {\n        ignoreTouchActionBar = false",
+      "after": "    init {\n        externalPermissions?.forEach { selectedExternal.add(it.key) }\n        ignoreTouchActionBar = false"
+    },
+    {
+      "path": "src/fork/ui/settings/PluginInstallSheet.kt",
+      "before": "            dismiss()\n            onInstall(enableNow)\n        }",
+      "after": "            dismiss()\n            if (content?.externalPermissions != null) {\n                content.onExternalInstall?.invoke(selectedExternal.toList(), enableNow)\n            } else {\n                onInstall(enableNow)\n            }\n        }"
+    },
+    {
+      "path": "src/fork/ui/settings/PluginInstallSheet.kt",
+      "before": "        if (content.previous == null) {\n            fillPermissions(items, manifest)\n        } else {",
+      "after": "        if (content.externalPermissions != null) {\n            fillExternalPermissions(items, content.externalPermissions, content.externalWarning)\n        } else if (content.previous == null) {\n            fillPermissions(items, manifest)\n        } else {"
+    },
+    {
+      "path": "src/fork/ui/settings/PluginInstallSheet.kt",
+      "before": "    private fun fillPermissions(items: ArrayList<UItem>, manifest: PluginManifest) {",
+      "after": "    private fun fillExternalPermissions(items: ArrayList<UItem>, permissions: List<ExternalInstallPermission>, warning: CharSequence?) {\n        items.add(UItem.asHeader(LocaleController.getString(R.string.InuPluginsPermissions)))\n        if (permissions.isEmpty()) {\n            items.add(UItem.asShadow(LocaleController.getString(R.string.InuPluginsPermissionsNone)))\n            warning?.let { items.add(UItem.asShadow(it)) }\n            return\n        }\n        permissions.forEachIndexed { index, permission ->\n            val rowId = EXTERNAL_GRANT_BASE + index\n            val last = index == permissions.lastIndex\n            val token = desu.inugram.helpers.plugins.PythonEngineBridge.grantDisplayToken(permission.key)\n            if (token != null) {\n                val row = externalRows.getOrPut(rowId) {\n                    PythonGrantRow(context)\n                } as PythonGrantRow\n                row.bind(token, permission.key in selectedExternal, !last)\n                items.add(UItem.asCustom(rowId, row))\n            } else {\n                val row = externalRows.getOrPut(rowId) {\n                    NotificationsCheckCell(context)\n                } as NotificationsCheckCell\n                row.setTextAndValueAndCheck(permission.title, permission.info, permission.key in selectedExternal, 0, true, !last)\n                items.add(UItem.asCustom(rowId, row))\n            }\n        }\n        warning?.let { items.add(UItem.asShadow(it)) }\n        items.add(UItem.asShadow(null))\n    }\n\n    private fun fillPermissions(items: ArrayList<UItem>, manifest: PluginManifest) {"
+    },
+    {
+      "path": "src/fork/InuConfig.kt",
+      "before": "    // the dev server warning was read and accepted, and the receiver is up: consent again, and one\n    // that grants anything with adb access an unreviewed install, so it is never carried over\n    @JvmField\n    val PLUGINS_DEV_MODE = BoolItem(\"plugins_dev_mode\", false, exportable = false)\n\n    // snapshot of theme state before Monet was enabled, \"day|night|autoNightType\"; empty = none\n    @JvmField\n    val MONET_PREV = StringItem(\"monet_prev\", \"\", exportable = false)\n",
+      "after": "    // the dev server warning was read and accepted, and the receiver is up: consent again, and one\n    // that grants anything with adb access an unreviewed install, so it is never carried over\n    @JvmField\n    val PLUGINS_DEV_MODE = BoolItem(\"plugins_dev_mode\", false, exportable = false)\n\n    @JvmField\n    val PYTHON_PLUGINS = BoolItem(\"python_plugins\", false)\n\n    // snapshot of theme state before Monet was enabled, \"day|night|autoNightType\"; empty = none\n    @JvmField\n    val MONET_PREV = StringItem(\"monet_prev\", \"\", exportable = false)\n",
+      "alternatives": [
+        "    // the dev server warning was read and accepted, and the receiver is up: consent again, and one\n    // that grants anything with adb access an unreviewed install, so it is never carried over\n    @JvmField\n    val PLUGINS_DEV_MODE = BoolItem(\"plugins_dev_mode\", false, exportable = false)\n\n    // master switch for the vendored exteraless (Python/Chaquopy) engine; the engine has its own\n    // toggle on top, and neither one alone boots Python when this is off.\n    // TEST BUILD 2026110600: default true so the device test can boot the engine without a\n    // settings screen; flip back to false before the final commit\n    @JvmField\n    val PYTHON_PLUGINS = BoolItem(\"python_plugins\", true)\n\n    // snapshot of theme state before Monet was enabled, \"day|night|autoNightType\"; empty = none\n    @JvmField\n    val MONET_PREV = StringItem(\"monet_prev\", \"\", exportable = false)\n"
+      ]
+    },
+    {
+      "path": "src/fork/ui/settings/PluginsActivity.kt",
+      "before": "        items.add(\n            mkTwoLineCheckItem(\n                ENGINE_TOGGLE,\n                R.string.InuPluginsEnableEngine,\n                R.string.InuPluginsEnableEngineInfo,\n                PluginManager.isEngineEnabled(),\n            )\n        )",
+      "after": "        items.add(UItem.asHeader(LocaleController.getString(R.string.InuPluginsEngine)))\n        items.add(engineRow(ENGINE_TOGGLE, R.string.InuPluginsEngineInugram, R.drawable.inu_engine_inugram, 0xFFF29D52.toInt(), PluginManager.isEngineEnabled()) { PluginManager.toggleEngine() })\n        items.add(engineRow(EXTERA_ENGINE_TOGGLE, R.string.InuPluginsEngineExtera, R.drawable.inu_engine_extera, 0xFF6C5CE7.toInt(), desu.inugram.helpers.plugins.PythonEngineBridge.isEngineEnabled()) {\n            val enabled = !desu.inugram.helpers.plugins.PythonEngineBridge.isEngineEnabled()\n            desu.inugram.helpers.plugins.PythonEngineBridge.setEngineEnabled(enabled)\n            enabled\n        })\n"
+    },
+    {
+      "path": "src/fork/ui/settings/PluginsActivity.kt",
+      "before": "        InuConfig.PLUGINS_COMPACT_LIST.toggle()\n        updateCompactItem()",
+      "after": "        InuConfig.PLUGINS_COMPACT_LIST.toggle()\n        desu.inugram.helpers.plugins.PythonEngineBridge.setCompactView(InuConfig.PLUGINS_COMPACT_LIST.value)\n        updateCompactItem()"
+    },
+    {
+      "path": "src/fork/ui/settings/PluginsActivity.kt",
+      "before": "            adapter.reorderSectionEnd()\n        }\n\n        items.add(UItem.asShadow(null))",
+      "after": "            adapter.reorderSectionEnd()\n        }\n\n        val pythonPlugins = desu.inugram.helpers.plugins.PythonEngineBridge.mirrors()\n        if (pythonPlugins.isNotEmpty()) {\n            items.add(UItem.asShadow(null))\n            items.add(UItem.asHeader(LocaleController.getString(R.string.InuPluginsEngineExtera)))\n            pythonPlugins.forEachIndexed { i, plugin ->\n                items.add(buildPythonRow(plugin, divider = classic && i != pythonPlugins.lastIndex))\n            }\n        }\n\n        items.add(UItem.asShadow(null))"
+    },
+    {
+      "path": "src/fork/ui/settings/PluginsActivity.kt",
+      "before": "        InuConfig.PLUGINS_DEV_MODE.value = enabled\n        val ctx = context ?: parentActivity",
+      "after": "        InuConfig.PLUGINS_DEV_MODE.value = enabled\n        desu.inugram.helpers.plugins.PythonEngineBridge.setDeveloperMode(enabled)\n        val ctx = context ?: parentActivity"
+    },
+    {
+      "path": "src/fork/ui/settings/PluginsActivity.kt",
+      "before": "            ENGINE_TOGGLE -> {\n                // the switch has to animate before the rebind below sets it non-animated: an\n                // already-checked Switch ignores the second setChecked, so the animation survives\n                (view as? NotificationsCheckCell)?.isChecked = PluginManager.toggleEngine()\n                listView.adapter.update(true)\n            }",
+      "after": "            ENGINE_TOGGLE -> {\n                // the switch has to animate before the rebind below sets it non-animated: an\n                // already-checked Switch ignores the second setChecked, so the animation survives\n                (view as? org.telegram.ui.Cells.TextCheckCell)?.isChecked = PluginManager.toggleEngine()\n                listView.adapter.update(true)\n            }\n            EXTERA_ENGINE_TOGGLE -> {\n                val enabled = !desu.inugram.helpers.plugins.PythonEngineBridge.isEngineEnabled()\n                desu.inugram.helpers.plugins.PythonEngineBridge.setEngineEnabled(enabled)\n                (view as? org.telegram.ui.Cells.TextCheckCell)?.isChecked = enabled\n                listView.adapter.update(true)\n            }"
+    },
+    {
+      "path": "src/fork/ui/settings/PluginsActivity.kt",
+      "before": "        private val BUTTON_REPOS = InuUtils.generateId()",
+      "after": "        private val BUTTON_REPOS = InuUtils.generateId()\n        private val EXTERA_ENGINE_TOGGLE = InuUtils.generateId()"
+    },
+    {
+      "path": "src/fork/ui/settings/PluginsActivity.kt",
+      "before": "    private fun showPluginOptions(plugin: Plugin, anchor: View) {",
+      "after": "    @SuppressLint(\"ClickableViewAccessibility\")\n    private fun buildPythonRow(plugin: Plugin, divider: Boolean): UItem {\n        val compact = InuConfig.PLUGINS_COMPACT_LIST.value\n        var row = rows[plugin.id]\n        if (row == null || row.compact != compact) {\n            row = PluginRow(context, compact).also { it.hideHandle() }\n            rows[plugin.id] = row\n        }\n        row.bind(\n            plugin,\n            onOpen = { presentFragment(PluginInfoActivity(plugin)) },\n            onUsernameClick = { username -> messagesController.openByUserName(username, this, 0) },\n            onMenu = { anchor -> showPythonOptions(plugin, anchor) },\n        ) { enabled -> PluginManager.setEnabled(plugin, enabled) }\n        row.bindSettings(if (desu.inugram.helpers.plugins.PythonEngineBridge.hasSettings(plugin)) ({ desu.inugram.helpers.plugins.PythonEngineBridge.openSettings(plugin, this) }) else null)\n        row.bindActions(onReload = { PluginManager.reload(plugin) }, onRemove = { removePlugin(plugin) })\n        row.setDivider(divider)\n        val uitem = if (compact) UItem.asCustom(row, PluginRow.HEIGHT_DP) else UItem.asCustom(row)\n        uitem.id = ITEM_BASE + (plugin.id.hashCode() and 0xffff)\n        uitem.`object` = plugin\n        return uitem\n    }\n\n    private fun showPythonOptions(plugin: Plugin, anchor: View) {\n        val bridge = desu.inugram.helpers.plugins.PythonEngineBridge\n        ItemOptions.makeOptions(this, anchor)\n            .addIf(bridge.hasSettings(plugin), R.drawable.msg_settings, LocaleController.getString(R.string.PluginsMenuOpenSettings)) { bridge.openSettings(plugin, this) }\n            .add(R.drawable.msg_permissions, LocaleController.getString(R.string.PluginPermissions)) { bridge.openPermissions(plugin, this) }\n            .add(R.drawable.msg_pin, LocaleController.getString(if (bridge.isPinned(plugin)) R.string.DialogUnpin else R.string.DialogPin)) { bridge.togglePinned(plugin) }\n            .addIf(plugin.enabled, R.drawable.msg_reset, LocaleController.getString(R.string.InuPluginsReload)) { PluginManager.reload(plugin) }\n            .add(R.drawable.msg_delete, LocaleController.getString(R.string.InuPluginsRemove), true) { removePlugin(plugin) }\n            .show()\n    }\n\n    private fun showPluginOptions(plugin: Plugin, anchor: View) {"
+    },
+    {
+      "path": "src/fork/ui/settings/PluginsActivity.kt",
+      "before": "        val uri = data?.data ?: return\n        val ctx = context ?: parentActivity ?: return",
+      "after": "        val uri = data?.data ?: return\n        if (desu.inugram.helpers.plugins.PythonEngineBridge.handleViewIntent(parentActivity, uri)) return\n        val ctx = context ?: parentActivity ?: return"
+    },
+    {
+      "path": "src/fork/helpers/plugins/PluginManager.kt",
+      "before": "    fun requestSafeMode() {\n        guard.armForcedSafeMode()",
+      "after": "    fun requestSafeMode() {\n        desu.inugram.helpers.plugins.PythonEngineBridge.setSafeMode(true)\n        guard.armForcedSafeMode()"
+    },
+    {
+      "path": "src/fork/InuHooks.kt",
+      "before": "        PluginManager.onAppBoot()\n        // #endif\n",
+      "after": "        PluginManager.onAppBoot()\n        // #endif\n        ApplicationLoader.applicationContext?.let { desu.inugram.helpers.plugins.PythonEngineBridge.init(it) }\n        desu.inugram.helpers.plugins.PythonEngineBridge.syncSafeMode(PluginManager.safeMode)\n        desu.inugram.helpers.plugins.PythonEngineBridge.onAppEvent(\"app_start\")\n"
+    },
+    {
+      "path": "src/fork/InuHooks.kt",
+      "before": "        desu.inugram.helpers.plugins.PluginCrashDialog.maybeShow(launchActivity)\n        // #endif\n",
+      "after": "        desu.inugram.helpers.plugins.PluginCrashDialog.maybeShow(launchActivity)\n        // #endif\n        desu.inugram.helpers.plugins.PythonEngineBridge.onAppEvent(\"app_resume\")\n        // #if ANALYTICS\n        AnalyticsHelper.onResume(launchActivity)\n        // #endif\n"
+    },
+    {
+      "path": "src/fork/helpers/chat/ChatHelper.kt",
+      "before": "        applyMessageMenuOrder(items, options, icons)\n",
+      "after": "        desu.inugram.helpers.plugins.PythonEngineBridge.fillMessageMenu(items, options, icons, activity, selectedObject)\n        applyMessageMenuOrder(items, options, icons)\n"
+    },
+    {
+      "path": "src/fork/helpers/chat/ChatHelper.kt",
+      "before": "    ): Boolean {\n        if (activity.chatMode == ChatActivity.inu_MODE_ARCHIVE && ArchiveChatHistory.processMenuOption(activity, option, selectedObject, selectedObjectGroup)) return true\n        // #if PLUGINS\n        if (option >= PluginActions.OPTION_BASE) return dispatchPluginItem(option)\n",
+      "after": "    ): Boolean {\n        if (desu.inugram.helpers.plugins.PythonEngineBridge.handleMessageMenuOption(option, activity, selectedObject)) return true\n        if (activity.chatMode == ChatActivity.inu_MODE_ARCHIVE && ArchiveChatHistory.processMenuOption(activity, option, selectedObject, selectedObjectGroup)) return true\n        // #if PLUGINS\n        if (option >= PluginActions.OPTION_BASE) return dispatchPluginItem(option)\n"
+    },
+    {
+      "path": "src/fork/helpers/chat/ChatActionsHelper.kt",
+      "before": "    fun addItems(activity: ChatActivity, headerItem: ActionBarMenuItem) {\n",
+      "after": "    fun addItems(activity: ChatActivity, headerItem: ActionBarMenuItem) {\n        desu.inugram.helpers.plugins.PythonEngineBridge.addActionMenu(activity, headerItem)\n"
+    },
+    {
+      "path": "src/fork/helpers/chat/ChatActionsHelper.kt",
+      "before": "    fun handleClick(id: Int, activity: ChatActivity): Boolean {\n",
+      "after": "    fun handleClick(id: Int, activity: ChatActivity): Boolean {\n        if (desu.inugram.helpers.plugins.PythonEngineBridge.handleActionMenuOption(id, activity, activity.currentAccount, activity.dialogId)) return true\n"
+    },
+    {
+      "path": "src/fork/helpers/profile/ProfileHelper.kt",
+      "before": "    fun addMenuItems(fragment: BaseFragment, otherItem: ActionBarMenuItem?, currentAccount: Int, dialogId: Long, resourcesProvider: Theme.ResourcesProvider?) {\n        if (otherItem == null) return\n",
+      "after": "    fun addMenuItems(fragment: BaseFragment, otherItem: ActionBarMenuItem?, currentAccount: Int, dialogId: Long, resourcesProvider: Theme.ResourcesProvider?) {\n        if (otherItem == null) return\n        desu.inugram.helpers.plugins.PythonEngineBridge.addActionMenu(fragment, otherItem)\n"
+    },
+    {
+      "path": "src/fork/helpers/profile/ProfileHelper.kt",
+      "before": "    fun handleMenuClick(id: Int, otherItem: ActionBarMenuItem?, currentAccount: Int, dialogId: Long): Boolean {\n",
+      "after": "    fun handleMenuClick(id: Int, otherItem: ActionBarMenuItem?, currentAccount: Int, dialogId: Long): Boolean {\n        if (desu.inugram.helpers.plugins.PythonEngineBridge.handleActionMenuOption(id, LaunchActivity.getLastFragment(), currentAccount, dialogId)) return true\n"
+    },
+    {
+      "path": "src/fork/helpers/dialogs/DrawerHelper.kt",
+      "before": "    fun addDialogsActivityOptions(instance: DialogsActivity, io: ItemOptions, show: Runnable) {\n",
+      "after": "    fun addDialogsActivityOptions(instance: DialogsActivity, io: ItemOptions, show: Runnable) {\n        desu.inugram.helpers.plugins.PythonEngineBridge.addGlobalMenu(instance, io)\n"
+    },
+    {
+      "path": "src/fork/ui/settings/PluginsActivity.kt",
+      "before": "    fun setOnReorderTouchListener(listener: OnTouchListener) {\n        handle.setOnTouchListener(listener)\n    }\n",
+      "after": "    fun setOnReorderTouchListener(listener: OnTouchListener) {\n        handle.setOnTouchListener(listener)\n    }\n\n    fun hideHandle() {\n        handle.visibility = INVISIBLE\n    }\n"
+    },
+    {
+      "path": "src/fork/helpers/plugins/PluginManager.kt",
+      "before": "    fun setEnabled(plugin: Plugin, enabled: Boolean) {\n        plugin.enabled = enabled\n",
+      "after": "    fun setEnabled(plugin: Plugin, enabled: Boolean) {\n        if (desu.inugram.helpers.plugins.PythonEngineBridge.isPython(plugin)) return desu.inugram.helpers.plugins.PythonEngineBridge.setEnabled(plugin, enabled)\n        plugin.enabled = enabled\n"
+    },
+    {
+      "path": "src/fork/helpers/plugins/PluginManager.kt",
+      "before": "    fun reload(plugin: Plugin) {\n        stop(plugin)\n",
+      "after": "    fun reload(plugin: Plugin) {\n        if (desu.inugram.helpers.plugins.PythonEngineBridge.isPython(plugin)) return desu.inugram.helpers.plugins.PythonEngineBridge.reload(plugin)\n        stop(plugin)\n"
+    },
+    {
+      "path": "src/fork/helpers/plugins/PluginManager.kt",
+      "before": "    fun remove(plugin: Plugin) {\n        plugin.enabled = false\n",
+      "after": "    fun remove(plugin: Plugin) {\n        if (desu.inugram.helpers.plugins.PythonEngineBridge.isPython(plugin)) return desu.inugram.helpers.plugins.PythonEngineBridge.remove(plugin)\n        plugin.enabled = false\n"
+    },
+    {
+      "path": "src/fork/ui/settings/PluginInfoActivity.kt",
+      "before": "        if (plugin.settingsPageId != null) {\n            items.add(UItem.asButton(BUTTON_SETTINGS,",
+      "after": "        if (plugin.settingsPageId != null || desu.inugram.helpers.plugins.PythonEngineBridge.hasSettings(plugin)) {\n            items.add(UItem.asButton(BUTTON_SETTINGS,"
+    },
+    {
+      "path": "src/fork/ui/settings/PluginInfoActivity.kt",
+      "before": "        items.add(UItem.asButton(BUTTON_SOURCE, R.drawable.inu_tabler_code, LocaleController.getString(R.string.InuPluginsViewSource)))\n        items.add(UItem.asButton(BUTTON_SHARE, R.drawable.msg_share, LocaleController.getString(R.string.ShareFile)))\n",
+      "after": "        if (plugin.source.isNotEmpty()) {\n            items.add(UItem.asButton(BUTTON_SOURCE, R.drawable.inu_tabler_code, LocaleController.getString(R.string.InuPluginsViewSource)))\n            items.add(UItem.asButton(BUTTON_SHARE, R.drawable.msg_share, LocaleController.getString(R.string.ShareFile)))\n        }\n"
+    },
+    {
+      "path": "src/fork/InuHooks.kt",
+      "before": "import desu.inugram.helpers.UrlCleanerHelper\n",
+      "after": "import desu.inugram.helpers.UrlCleanerHelper\n// #if ANALYTICS\nimport desu.inugram.helpers.analytics.AnalyticsHelper\n// #endif\n"
+    },
+    {
+      "path": "src/fork/InuHooks.kt",
+      "before": "        CrashReporter.install()\n        InuConfig.load(context)\n",
+      "after": "        CrashReporter.install()\n        // #if ANALYTICS\n        AnalyticsHelper.init(context)\n        // #endif\n        InuConfig.load(context)\n"
+    },
+    {
+      "path": "src/fork/helpers/CrashReporter.kt",
+      "before": "import desu.inugram.ui.CrashReportBottomSheet\n",
+      "after": "import desu.inugram.ui.CrashReportBottomSheet\n// #if ANALYTICS\nimport desu.inugram.helpers.analytics.AnalyticsHelper\n// #endif\n"
+    },
+    {
+      "path": "src/fork/helpers/CrashReporter.kt",
+      "before": "        override fun uncaughtException(t: Thread, e: Throwable) {\n            try {\n",
+      "after": "        override fun uncaughtException(t: Thread, e: Throwable) {\n            // #if ANALYTICS\n            AnalyticsHelper.recordCrash(e)\n            // #endif\n            try {\n"
+    },
+    {
+      "path": "src/fork/InuConfig.kt",
+      "before": "val PLUGINS_ENABLED = BoolItem(\"plugins_enabled\", false)",
+      "after": "val PLUGINS_ENABLED = BoolItem(\"plugins_enabled\", true)"
+    },
+    {
+      "path": "src/fork/ui/settings/PluginsActivity.kt",
+      "before": "    override fun onClick(item: UItem, view: View, position: Int, x: Float, y: Float) {\n",
+      "after": "    private val engineCells = HashMap<Int, org.telegram.ui.Cells.TextCheckCell>()\n\n    private fun engineRow(id: Int, title: Int, icon: Int, color: Int, checked: Boolean, toggle: () -> Boolean): UItem {\n        val cell = engineCells.getOrPut(id) {\n            org.telegram.ui.Cells.TextCheckCell(context).also { view ->\n                view.setBackgroundColor(org.telegram.ui.ActionBar.Theme.getColor(org.telegram.ui.ActionBar.Theme.key_windowBackgroundWhite))\n                view.setOnClickListener {\n                    view.isChecked = toggle()\n                    listView.adapter.update(true)\n                }\n            }\n        }\n        cell.setTextAndCheck(LocaleController.getString(title), checked, true)\n        cell.setColorfullIcon(color, icon)\n        return UItem.asCustom(id, cell)\n    }\n\n    override fun onClick(item: UItem, view: View, position: Int, x: Float, y: Float) {\n"
+    },
+    {
+      "path": "src/fork/helpers/update/UpdateHelper.kt",
+      "before": "        Regex(\"^entinygram(?:-beta)?-plugins-arm64-(.+)-(\\\\d+)\\\\.apk$\")",
+      "after": "        Regex(\"^entinygram-private-arm64-(.+)-(\\\\d+)\\\\.apk$\")"
+    },
+    {
+      "path": "src/fork/helpers/update/UpdateHelper.kt",
+      "before": "        MessagesController.getInstance(account).userNameResolver.resolve(USERNAME) { peerId ->",
+      "after": "        desu.inugram.helpers.update.PrivateUpdateSource.resolve(account) { peerId ->"
+    },
+    {
+      "path": "src/fork/helpers/update/UpdateHelper.kt",
+      "before": "        searchByTag(account, peerId, \"#release\") { releaseMessages, err ->",
+      "after": "        searchByTag(account, peerId, \"\") { releaseMessages, err ->"
+    },
+    {
+      "path": "src/fork/helpers/update/UpdateHelper.kt",
+      "before": "            if (!InuConfig.UPDATES_INCLUDE_BETA.value) {\n                resolveBestUpdate(releaseMessages, callback)",
+      "after": "            if (desu.inugram.helpers.update.PrivateUpdateSource.ACTIVE || !InuConfig.UPDATES_INCLUDE_BETA.value) {\n                resolveBestUpdate(releaseMessages, callback)"
+    },
+    {
+      "path": "src/fork/helpers/update/UpdateHelper.kt",
+      "before": "        if (!isBeta && !hasOwnChangelog(msg, updateObj)) {\n            fetchChangelog(info, updateObj) {\n                finish(callback, CheckResult.Updated(updateObj))",
+      "after": "        if (!isBeta && !desu.inugram.helpers.update.PrivateUpdateSource.ACTIVE && !hasOwnChangelog(msg, updateObj)) {\n            fetchChangelog(info, updateObj) {\n                finish(callback, CheckResult.Updated(updateObj))"
+    },
+    {
+      "path": "src/fork/helpers/update/UpdateHelper.kt",
+      "before": "        val text = targetMsg.message ?: return\n        val isBeta = text.contains(\"#prerelease\")",
+      "after": "        if (desu.inugram.helpers.update.PrivateUpdateSource.ACTIVE) {\n            check(null)\n            return\n        }\n        val text = targetMsg.message ?: return\n        val isBeta = text.contains(\"#prerelease\")"
+    }
+  ]
+}

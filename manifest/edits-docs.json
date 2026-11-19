@@ -1,0 +1,9 @@
+{
+  "edits": [
+    {
+      "path": "FEATURES.md",
+      "before": "### proxy, plugins & performance\n",
+      "after": "### proxy, plugins & performance\n\n- 📡 **python plugins** — run Python and DEX plugins alongside JavaScript plugins in the shared plugin screen - *ported from exteraless*\n"
+    }
+  ]
+}

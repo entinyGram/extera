@@ -1,0 +1,192 @@
+{
+  "files": [
+    {
+      "source": "overlay/src/fork-app/helpers/plugins/PythonPluginTitles.kt",
+      "target": "src/fork-app/helpers/plugins/PythonPluginTitles.kt",
+      "previous_sha256": [
+        "8617c9505fe326cfee7faf3a24f41069148c486927827041da6aa6be44de153d"
+      ]
+    },
+    {
+      "source": "overlay/engine/engine.gradle",
+      "target": "extera-plugins/engine/engine.gradle"
+    },
+    {
+      "source": "overlay/engine/proguard-rules.pro",
+      "target": "extera-plugins/engine/proguard-rules.pro",
+      "previous_sha256": [
+        "e66d54e65dbb578a9ab03ffdabc923ccc8d388603da137531b0c0bf0eda12e07",
+        "09bf48ae9f921eccfdd13f221ccf9c0796775ef8ce7da095906055fae33b6dc3",
+        "ff407c0d8a93ee9fd2f87d65bc092e13013831dc9f88d59dc3bba9dd0fb23a58"
+      ]
+    },
+    {
+      "source": "overlay/engine/build_runtime.py",
+      "target": "extera-plugins/engine/build_runtime.py"
+    },
+    {
+      "source": "overlay/src/fork-app/ui/settings/PythonPluginPermissionsActivity.kt",
+      "target": "src/fork-app/ui/settings/PythonPluginPermissionsActivity.kt"
+    },
+    {
+      "source": "overlay/src/fork-app/ui/settings/PythonPluginSettingsActivity.kt",
+      "target": "src/fork-app/ui/settings/PythonPluginSettingsActivity.kt"
+    },
+    {
+      "source": "overlay/src/fork-app/helpers/plugins/PythonMenuBridge.kt",
+      "target": "src/fork-app/helpers/plugins/PythonMenuBridge.kt"
+    },
+    {
+      "source": "overlay/src/fork-app/helpers/plugins/PythonPluginUi.kt",
+      "target": "src/fork-app/helpers/plugins/PythonPluginUi.kt",
+      "previous_sha256": [
+        "0da6b11bf150ef6a12815ee512cf60021ea2da5e1f8b8171e7a36f3070df022a"
+      ]
+    },
+    {
+      "source": "overlay/src/fork/helpers/plugins/PythonEngineBridge.kt",
+      "target": "src/fork/helpers/plugins/PythonEngineBridge.kt",
+      "previous_sha256": [
+        "3dc6833c66c0a888c51ac52ab6d6b4160d839ef423b5c26a72ce3815a782cf13",
+        "f69afa8f1900aac0eac9b83f628daad6622e0715e45607b975f5db16e9d3c5d7"
+      ]
+    },
+    {
+      "source": "overlay/engine/java/app/exteraless/plugins/ui/PluginSettingsActivity.java",
+      "target": "extera-plugins/engine/java/app/exteraless/plugins/ui/PluginSettingsActivity.java",
+      "previous_sha256": [
+        "654727f6ca6261549f1be56c46fe028cd3bbbbbed8fc0cb81913a91a1e77db83"
+      ]
+    },
+    {
+      "source": "overlay/res/drawable/inu_engine_inugram.xml",
+      "target": "src/res/drawable/inu_engine_inugram.xml"
+    },
+    {
+      "source": "overlay/res/drawable/inu_engine_extera.xml",
+      "target": "src/res/drawable/inu_engine_extera.xml"
+    },
+    {
+      "source": "overlay/src/fork/ui/settings/PythonGrantRow.kt",
+      "target": "src/fork/ui/settings/PythonGrantRow.kt"
+    },
+    {
+      "source": "overlay/engine/java/de/robv/android/xposed/XposedBridge.java",
+      "target": "extera-plugins/engine/java/de/robv/android/xposed/XposedBridge.java"
+    },
+    {
+      "source": "overlay/engine/java/de/robv/android/xposed/XC_MethodHook.java",
+      "target": "extera-plugins/engine/java/de/robv/android/xposed/XC_MethodHook.java"
+    },
+    {
+      "source": "overlay/engine/java/de/robv/android/xposed/XC_MethodReplacement.java",
+      "target": "extera-plugins/engine/java/de/robv/android/xposed/XC_MethodReplacement.java"
+    },
+    {
+      "source": "overlay/engine/java/de/robv/android/xposed/callbacks/XCallback.java",
+      "target": "extera-plugins/engine/java/de/robv/android/xposed/callbacks/XCallback.java"
+    },
+    {
+      "source": "overlay/engine/java/de/robv/android/xposed/callbacks/IXUnhook.java",
+      "target": "extera-plugins/engine/java/de/robv/android/xposed/callbacks/IXUnhook.java"
+    },
+    {
+      "source": "overlay/src/fork/helpers/analytics/AnalyticsHelper.kt",
+      "target": "src/fork/helpers/analytics/AnalyticsHelper.kt"
+    },
+    {
+      "source": "overlay/src/fork/helpers/analytics/AnalyticsSettings.kt",
+      "target": "src/fork/helpers/analytics/AnalyticsSettings.kt"
+    },
+    {
+      "source": "overlay/engine/java/app/exteraless/plugins/ui/PluginsActivity.java",
+      "target": "extera-plugins/engine/java/app/exteraless/plugins/ui/PluginsActivity.java"
+    },
+    {
+      "source": "overlay/engine/java/com/exteragram/messenger/utils/chats/ChatUtils.java",
+      "target": "extera-plugins/engine/java/com/exteragram/messenger/utils/chats/ChatUtils.java"
+    },
+    {
+      "source": "overlay/engine/java/com/exteragram/messenger/ExteraConfig.java",
+      "target": "extera-plugins/engine/java/com/exteragram/messenger/ExteraConfig.java"
+    },
+    {
+      "source": "overlay/engine/java/com/exteragram/messenger/utils/AppUtils.java",
+      "target": "extera-plugins/engine/java/com/exteragram/messenger/utils/AppUtils.java"
+    },
+    {
+      "source": "overlay/engine/java/app/exteraless/plugins/SdkUpdater.java",
+      "target": "extera-plugins/engine/java/app/exteraless/plugins/SdkUpdater.java"
+    },
+    {
+      "source": "overlay/engine/python/audioop.py",
+      "target": "extera-plugins/engine/python/audioop.py"
+    },
+    {
+      "source": "overlay/src/fork/helpers/update/PrivateUpdateSource.kt",
+      "target": "src/fork/helpers/update/PrivateUpdateSource.kt"
+    },
+    {
+      "source": "overlay/engine/python/base_plugin.py",
+      "target": "extera-plugins/engine/python/base_plugin.py"
+    },
+    {
+      "source": "overlay/engine/python/log_utils.py",
+      "target": "extera-plugins/engine/python/log_utils.py"
+    },
+    {
+      "source": "overlay/engine/python/extera_utils/lifecycle.py",
+      "target": "extera-plugins/engine/python/extera_utils/lifecycle.py"
+    },
+    {
+      "source": "overlay/src/fork/helpers/plugins/platform/PluginXposed.kt",
+      "target": "src/fork/helpers/plugins/platform/PluginXposed.kt",
+      "previous_sha256": [
+        "291426dcca0d1fe763be13dca25a5a71af54ceffd0e067f0d8d523021a03411f",
+        "06e5d983e4b062236cc1a62b5683ab7ab4b4c94f300b4aeb2593e0bf658383ac"
+      ]
+    }
+  ],
+  "resources": [
+    {
+      "source": "overlay/strings/values.xml",
+      "target": "src/res/values/strings_inu.xml"
+    },
+    {
+      "source": "overlay/strings/values-ar.xml",
+      "target": "src/res/values-ar/strings_inu.xml"
+    },
+    {
+      "source": "overlay/strings/values-es.xml",
+      "target": "src/res/values-es/strings_inu.xml"
+    },
+    {
+      "source": "overlay/strings/values-fa.xml",
+      "target": "src/res/values-fa/strings_inu.xml"
+    },
+    {
+      "source": "overlay/strings/values-it.xml",
+      "target": "src/res/values-it/strings_inu.xml"
+    },
+    {
+      "source": "overlay/strings/values-ja.xml",
+      "target": "src/res/values-ja/strings_inu.xml"
+    },
+    {
+      "source": "overlay/strings/values-ru.xml",
+      "target": "src/res/values-ru/strings_inu.xml"
+    },
+    {
+      "source": "overlay/strings/values-tr.xml",
+      "target": "src/res/values-tr/strings_inu.xml"
+    },
+    {
+      "source": "overlay/strings/values-uk.xml",
+      "target": "src/res/values-uk/strings_inu.xml"
+    },
+    {
+      "source": "overlay/strings/values-zh-rCN.xml",
+      "target": "src/res/values-zh-rCN/strings_inu.xml"
+    }
+  ]
+}
