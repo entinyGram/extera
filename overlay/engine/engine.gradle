@@ -15,7 +15,7 @@ android.buildTypes.configureEach {
 }
 
 afterEvaluate {
-    def pythonVersion = '3.13'
+    def pythonVersion = '3.11'
     def commonClass = plugins.getPlugin('com.chaquo.python').class.classLoader.loadClass('com.chaquo.python.internal.Common')
     def target = commonClass.getField('PYTHON_VERSIONS').get(null).find { it.key.startsWith(pythonVersion + '.') }
     if (target == null) throw new GradleException("Chaquopy has no Python ${pythonVersion} runtime")

@@ -2,7 +2,7 @@
 
 приватна накладка другого рушія плагінів (python, exteraless) на entinyGram. лежить у `extera-plugins/` кореня entinyGram, ignored основним repo, має свій git: `entinyGram/extera` (private).
 
-накладка нічого не комітить у entinyGram, не чіпає stgit і `patches/`. вона пише в `src/` і `worktree/` як незакомічені зміни, а `build.py` після збірки знімає їх сам.
+накладка нічого не комітить у entinyGram, не чіпає stgit і `patches/`. вона пише в `src/` і `worktree/` як незакомічені зміни, а `build.ts` після збірки знімає їх сам.
 
 ## quickstart
 
@@ -10,26 +10,28 @@
 
 | дія | команда |
 | --- | --- |
-| перевірити, нічого не змінюючи | `python extera-plugins/apply.py --check` |
-| стан накладки | `python extera-plugins/apply.py --status` |
-| накласти | `python extera-plugins/apply.py` |
-| зняти | `python extera-plugins/apply.py --revert` |
-| зібрати apk (накласти → зібрати → зняти) | `python extera-plugins/build.py` |
-| показати збірку без запуску | `python extera-plugins/build.py --dry-run` |
-| тести | `python -m unittest discover -s extera-plugins/tests` |
+| перевірити, нічого не змінюючи | `bun extera-plugins/apply.ts --check` |
+| стан накладки | `bun extera-plugins/apply.ts --status` |
+| накласти | `bun extera-plugins/apply.ts` |
+| зняти | `bun extera-plugins/apply.ts --revert` |
+| зібрати apk (накласти → зібрати → зняти) | `bun extera-plugins/build.ts` |
+| показати збірку без запуску | `bun extera-plugins/build.ts --dry-run` |
+| тести | `bun test extera-plugins/tests` |
 
 `--repo` за замовчуванням дорівнює батьківській папці, тож у звичайному checkout його можна не передавати. збірку запускати лише на прохання, вона йде близько 10 хвилин.
+
+інструменти пакета написані на typescript під bun, як скрипти entinyGram. python 3.11 лишається потрібним лише для того, що на ньому працює: сам рушій плагінів, chaquopy `buildPython` і `overlay/engine/build_runtime.py` (cython runtime, запускається з gradle).
 
 ## структура
 
 | шлях | що це | git |
 | --- | --- | --- |
-| `apply.py` | накладка: `--check`, `--status`, `--revert`, `--map` | так |
-| `build.py` | нумерована локальна збірка `YYYYMMDDNN` | так |
-| `sdk_release.py` | пакує і підписує python sdk для `SdkUpdater` | так |
+| `apply.ts` | накладка: `--check`, `--status`, `--revert`, `--map` | так |
+| `build.ts` | нумерована локальна збірка `YYYYMMDDNN` | так |
+| `sdk.ts` | пакує і підписує python sdk для `SdkUpdater` | так |
 | `manifest/` | що і куди накладати, розбито за областями | так |
 | `overlay/` | наші файли: екрани, міст, рядки, gradle-скрипт рушія | так |
-| `tests/` | unit-тести і `verify_overlay.py` | так |
+| `tests/` | `bun test` і `verify.ts` (clean + current checkout) | так |
 | `docs/` | документація, див. нижче | так |
 | `engine/` | згенерований vendor: java, python, chaquopy і копії з `overlay/engine` | ні |
 | `var/` | `cache/` git-джерел, `state/` транзакцій, `out/` apk і sdk, `config.yaml` номера збірки | ні |

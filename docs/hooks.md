@@ -3,7 +3,7 @@
 реєстр правок host, які робить накладка. генерується, руками не правити:
 
 ```powershell
-python extera-plugins/apply.py --map > extera-plugins/docs/hooks.md
+bun extera-plugins/apply.ts --map > extera-plugins/docs/hooks.md
 ```
 
 регенеруй після кожної зміни `manifest/edits-*.json`. `net lines` рахує різницю рядків `after` мінус `before`.

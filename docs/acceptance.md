@@ -1,13 +1,13 @@
 # acceptance
 
-накладка вважається прийнятою, лише коли кожен пункт пройдено на реальному пристрої з apk, зібраним `build.py` на чистій базі. у звіті вказуй номер apk, пристрій і версію android.
+накладка вважається прийнятою, лише коли кожен пункт пройдено на реальному пристрої з apk, зібраним `build.ts` на чистій базі. у звіті вказуй номер apk, пристрій і версію android.
 
 ## пакет
 
-- [ ] `python extera-plugins/apply.py --check` зелений на чистому checkout
-- [ ] `python -m unittest discover -s extera-plugins/tests` зелений
-- [ ] `apply.py`, потім `apply.py --revert`, і `git status` entinyGram без змін від накладки
-- [ ] у `overlay/` немає symlink, `docs/hooks.md` збігається з `apply.py --map`
+- [ ] `bun extera-plugins/apply.ts --check` зелений на чистому checkout
+- [ ] `bun test extera-plugins/tests` зелений
+- [ ] `apply.ts`, потім `apply.ts --revert`, і `git status` entinyGram без змін від накладки
+- [ ] у `overlay/` немає symlink, `docs/hooks.md` збігається з `apply.ts --map`
 
 ## пристрій
 

@@ -49,7 +49,7 @@ def main():
     for name in ('source', 'workspace', 'output', 'target-zip', 'ndk', 'sdk'):
         parser.add_argument('--' + name, type=Path, required=True)
     parser.add_argument('--abi', choices=('arm64-v8a', 'x86_64'), required=True)
-    parser.add_argument('--python-version', default='3.13')
+    parser.add_argument('--python-version', default='3.11')
     args = parser.parse_args()
     if f'{sys.version_info.major}.{sys.version_info.minor}' != args.python_version:
         parser.error(f'Set CHAQUOPY_BUILD_PYTHON to Python {args.python_version}')

@@ -119,10 +119,6 @@
       "target": "extera-plugins/engine/java/app/exteraless/plugins/SdkUpdater.java"
     },
     {
-      "source": "overlay/engine/python/audioop.py",
-      "target": "extera-plugins/engine/python/audioop.py"
-    },
-    {
       "source": "overlay/src/fork/helpers/update/PrivateUpdateSource.kt",
       "target": "src/fork/helpers/update/PrivateUpdateSource.kt"
     },

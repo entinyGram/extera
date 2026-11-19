@@ -27,7 +27,9 @@
 | симптом | причина | що робити |
 | --- | --- | --- |
 | `Python plugins require ABI_FILTERS=arm64-v8a or x86_64` | інший abi | `--abi arm64-v8a` |
-| `Chaquopy has no Python 3.13 runtime` | інша версія chaquopy | тримати 16.1.0 |
+| `Python 3.11 is required for Chaquopy` | на машині немає python 3.11 | встановити 3.11 (`py -3.11` має працювати) або задати `CHAQUOPY_BUILD_PYTHON` |
+| `Set CHAQUOPY_BUILD_PYTHON to Python 3.11` | `build_runtime.py` запущено не тим python | те саме |
+| `Chaquopy has no Python 3.11 runtime` | інша версія chaquopy | тримати 16.1.0 |
 | `OsmdroidMap.kt not found` у `compileReleaseKotlin` | старі kotlin compile daemons бачать застарілий symlink | зупинити `kotlin-compiler-embeddable` процеси, запущені раніше, `GradleDaemon` не чіпати |
 | `APK already exists` | номер уже зайнятий | перевірити `var/config.yaml` |
 | `config.yaml.lock` лишився | процес убили | переконатися, що збірка не йде, видалити lock |
@@ -42,3 +44,9 @@
 - логи рушія пишуться в `plugin_logs/plugins.log` і `plugins.1.log`. `PluginToggleTrace` у release вимкнений
 - `.py` у `PluginInstallHelper.EXTENSIONS` уже додано (`PLUGIN_EXT_PY`). на пристрої це не перевірено
 - inu picker і зовнішній `ACTION_VIEW` при вимкненому gate отримують `false` ще в bridge, а python picker доходить до helper
+
+## python 3.11
+
+- shim `audioop.py` прибрано з overlay: у 3.11 є рідний модуль
+- опублікований sdk `1.4.6.4` ще містить цей shim. `SdkUpdater` розпаковує його поверх вбудованого. `[INFERENCE]` shim тоді може перекрити рідний `audioop`: працюватиме, але повільніше. виправляє новий випуск sdk через `sdk.ts`
+- збірки на 3.13 і 3.11 мають різні native-бібліотеки. оновлення поверх старого apk може лишити застарілі розпаковані ассети. якщо python не стартує, перша спроба — очистити дані застосунку

@@ -9,7 +9,7 @@
 | hook-рушій | Pine `216d910f` з 16KB `libpine.so` і java-guard від arm64 receiver mis-read (`pine-*.patch`) | Aliuhook 1.1.4 | кандидат. потрібна нативна збірка і перевірка на пристрої, поки не беремо |
 | старт python | `PythonStartupPlatform`: sha256 bootstrap-ассетів з `build.json`, видалення пошкоджених і повторний розпак | `AndroidPlatform` | беремо наступним кроком: мало коду, б'є по крашах на старті |
 | runtime | `libs/chaquopy-runtime/manifest.json`: upstream, revision, sha256 патча, target zip і кожного `.so` | шляхи і версії в `engine.gradle` | беремо ідею: винести pin і sha256 у `manifest/sources.json` |
-| python | 3.11, chaquopy 17.0.0, hybrid arm64+armv7, `-PngArm64Only` | 3.13, chaquopy 16.1.0, arm64/x86_64 | лишаємо 3.13, бо з ним проходила збірка. 3.11 — окремий експеримент разом зі зміною wheels |
+| python | 3.11, chaquopy 17.0.0, hybrid arm64+armv7, `-PngArm64Only` | 3.13, chaquopy 16.1.0, arm64/x86_64 | **перейшли на 3.11** (2026-11-19): так у upstream exteraless, а в 3.12/3.13 видалено модулі, які імпортують плагіни exteraGram (`audioop`, `imghdr`, `cgi`, `telnetlib`, `pipes`, `crypt`, `distutils`, `imp`, `asyncore`). збіркою на 3.11 ще не перевірено |
 | wheels | `--find-links python-wheels/arm64-v8a` (16KB), `--constraint python-constraints.txt` | pip без pin | беремо: constraints і, за потреби, локальні wheels |
 | dev install | `PluginDevInstallBridge`, токен і окремий потік | `dev_server.py` з vendor | не беремо, це dev-інструмент |
 | pip на пристрої | `pip/PipController.java` (293 KB) | `pip_controller.py` з vendor | не розібрано, `[INFERENCE]` дублює vendor |

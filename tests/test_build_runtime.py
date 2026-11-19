@@ -16,12 +16,12 @@ class RuntimePreparationTests(unittest.TestCase):
             root = Path(directory)
             archive = root / 'target.zip'
             with zipfile.ZipFile(archive, 'w') as target:
-                target.writestr('include/python3.13/Python.h', 'header')
-                target.writestr('jniLibs/arm64-v8a/libpython3.13.so', b'arm64')
-                target.writestr('jniLibs/x86_64/libpython3.13.so', b'x86')
-            runtime.extract_target(archive, root / 'prefix', 'arm64-v8a', '3.13')
-            self.assertEqual((root / 'prefix/lib/libpython3.13.so').read_bytes(), b'arm64')
-            self.assertTrue((root / 'prefix/include/python3.13/Python.h').is_file())
+                target.writestr('include/python3.11/Python.h', 'header')
+                target.writestr('jniLibs/arm64-v8a/libpython3.11.so', b'arm64')
+                target.writestr('jniLibs/x86_64/libpython3.11.so', b'x86')
+            runtime.extract_target(archive, root / 'prefix', 'arm64-v8a', '3.11')
+            self.assertEqual((root / 'prefix/lib/libpython3.11.so').read_bytes(), b'arm64')
+            self.assertTrue((root / 'prefix/include/python3.11/Python.h').is_file())
             self.assertFalse((root / 'prefix/jniLibs').exists())
 
     def test_target_rejects_path_traversal(self):
@@ -30,9 +30,9 @@ class RuntimePreparationTests(unittest.TestCase):
             archive = root / 'target.zip'
             with zipfile.ZipFile(archive, 'w') as target:
                 target.writestr('include/../../escape', b'bad')
-                target.writestr('jniLibs/arm64-v8a/libpython3.13.so', b'arm64')
+                target.writestr('jniLibs/arm64-v8a/libpython3.11.so', b'arm64')
             with self.assertRaises(RuntimeError):
-                runtime.extract_target(archive, root / 'prefix', 'arm64-v8a', '3.13')
+                runtime.extract_target(archive, root / 'prefix', 'arm64-v8a', '3.11')
             self.assertFalse((root / 'escape').exists())
 
     def test_jni_transform_matches_upstream_build_script(self):
