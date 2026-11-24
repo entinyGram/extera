@@ -189,9 +189,4 @@
     <string name="InuPythonPlugins">Плагіни Python</string>
     <string name="InuPythonPluginsInfo">Запускайте плагіни Python, Elyx та DEX окремо від плагінів JavaScript.</string>
     <string name="InuPythonPluginsDevInfo">Запускає локальний сервер для розробки плагінів. Перезапустіть застосунок після зміни.</string>
-    <string name="InuAnalyticsTitle">Аналітика передрелізної версії</string>
-    <string name="InuAnalyticsInfo">Це передрелізна збірка entinyGram.\n\nЯкщо ви погодитеся, застосунок надсилатиме увімкнені налаштування та звіти про збої разом із випадковим ідентифікатором встановлення, моделлю пристрою та версією Android. Звіти не містять вмісту повідомлень, файлів і ключів API. Звіти про збої надсилаються після наступного запуску.\n\nЯкщо ви відмовитеся, лише ідентифікатор встановлення, модель пристрою, версія Android і ваша відмова будуть надіслані один раз. Налаштування та звіти про збої не надсилатимуться.\n\nВаш вибір зберігається для цього встановлення. Стабільні версії не містять аналітики.</string>
-    <string name="InuAnalyticsAgree">Погоджуюся</string>
-    <string name="InuAnalyticsDecline">Відмовитися</string>
-    <string name="InuAnalyticsSaveFailed">Не вдалося зберегти ваш вибір. Спробуйте ще раз.</string>
 </resources>

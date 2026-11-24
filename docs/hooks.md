@@ -1,19 +1,8 @@
-# hooks
-
-реєстр правок host, які робить накладка. генерується, руками не правити:
-
-```powershell
-bun extera-plugins/apply.ts --map > extera-plugins/docs/hooks.md
-```
-
-регенеруй після кожної зміни `manifest/edits-*.json`. `net lines` рахує різницю рядків `after` мінус `before`.
-
-| area | file | hunks | net lines |
+﻿| area | file | hunks | net lines |
 | --- | --- | --- | --- |
 | docs | `FEATURES.md` | 1 | +2 |
 | fork | `src/fork/InuConfig.kt` | 2 | +3 |
-| fork | `src/fork/InuHooks.kt` | 4 | +13 |
-| fork | `src/fork/helpers/CrashReporter.kt` | 2 | +6 |
+| fork | `src/fork/InuHooks.kt` | 2 | +4 |
 | fork | `src/fork/helpers/chat/ChatActionsHelper.kt` | 2 | +2 |
 | fork | `src/fork/helpers/chat/ChatHelper.kt` | 2 | +2 |
 | fork | `src/fork/helpers/dialogs/DrawerHelper.kt` | 1 | +1 |
@@ -23,9 +12,8 @@ bun extera-plugins/apply.ts --map > extera-plugins/docs/hooks.md
 | fork | `src/fork/ui/settings/PluginInfoActivity.kt` | 2 | +2 |
 | fork | `src/fork/ui/settings/PluginInstallSheet.kt` | 11 | +48 |
 | fork | `src/fork/ui/settings/PluginsActivity.kt` | 10 | +74 |
-| gradle | `worktree/TMessagesProj/build.gradle` | 4 | +6 |
-| gradle | `worktree/TMessagesProj_App/build.gradle` | 4 | +25 |
-| gradle | `worktree/build.gradle` | 1 | +1 |
+| gradle | `worktree/TMessagesProj_App/build.gradle` | 4 | +27 |
+| gradle | `worktree/build.gradle` | 1 | +2 |
 | stock | `worktree/TMessagesProj/src/main/java/org/telegram/messenger/AndroidUtilities.java` | 4 | +4 |
 | stock | `worktree/TMessagesProj/src/main/java/org/telegram/messenger/MessagesController.java` | 2 | +42 |
 | stock | `worktree/TMessagesProj/src/main/java/org/telegram/messenger/MessagesStorage.java` | 1 | +3 |

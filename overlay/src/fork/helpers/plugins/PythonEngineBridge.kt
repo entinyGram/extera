@@ -8,14 +8,16 @@ import desu.inugram.InuConfig
 import org.telegram.messenger.FileLog
 import org.telegram.messenger.MessageObject
 import org.telegram.messenger.NotificationCenter
+import org.telegram.messenger.Utilities
+import org.telegram.tgnet.TLObject
+import org.telegram.tgnet.TLRPC
 import org.telegram.ui.ActionBar.ActionBarMenuItem
 import org.telegram.ui.ActionBar.BaseFragment
 import org.telegram.ui.ChatActivity
 import org.telegram.ui.Components.ItemOptions
+import org.telegram.ui.LaunchActivity
 import desu.inugram.ui.settings.SettingsPageActivity
 import java.io.File
-import java.lang.reflect.Field
-import java.lang.reflect.Method
 import java.util.concurrent.ConcurrentHashMap
 
 object PythonEngineBridge {
@@ -62,18 +64,7 @@ object PythonEngineBridge {
     @Volatile
     private var controllerClass: Class<*>? = null
     @Volatile
-    private var installHelperClass: Class<*>? = null
-    @Volatile
-    private var intentsDispatcherClass: Class<*>? = null
-    @Volatile
-    private var sinkGateClass: Class<*>? = null
-    @Volatile
-    private var filesControllerClass: Class<*>? = null
-
-    @Volatile
-    private var hookResultCancelMethod: Method? = null
-    @Volatile
-    private var hookResultValueField: Field? = null
+    private var configClass: Class<*>? = null
 
     @JvmStatic
     fun available(): Boolean = InuConfig.PYTHON_PLUGINS.value && controller() != null
@@ -89,27 +80,40 @@ object PythonEngineBridge {
 
     @JvmStatic
     fun init(context: Context) {
-        try {
-            controller()?.javaClass?.getMethod("init", Context::class.java)?.invoke(controller(), context)
-        } catch (t: Throwable) {
-            FileLog.e(t)
-        }
+        setConfigFlag("pluginsEngine", InuConfig.PYTHON_PLUGINS.value)
         setDeveloperMode(InuConfig.PLUGINS_DEV_MODE.value)
         setCompactView(InuConfig.PLUGINS_COMPACT_LIST.value)
         observeUpdates()
+        if (!InuConfig.PYTHON_PLUGINS.value) return
+        try {
+            controller()?.let { c ->
+                c.javaClass.getMethod("init").invoke(c)
+            }
+        } catch (t: Throwable) {
+            FileLog.e(t)
+        }
     }
 
     @JvmStatic
     fun onAppEvent(event: String) {
-        if (event == "app_start") return
+        if (event == "app_start" || !InuConfig.PYTHON_PLUGINS.value) return
         invokeController("executeOnAppEvent", arrayOf(String::class.java), arrayOf(event))
     }
 
     @JvmStatic
     fun setEngineEnabled(enabled: Boolean) {
-        if (enabled) InuConfig.PYTHON_PLUGINS.value = true
-        invokeController("setEngineEnabled", arrayOf(Boolean::class.javaPrimitiveType), arrayOf(enabled))
-        if (!enabled) InuConfig.PYTHON_PLUGINS.value = false
+        InuConfig.PYTHON_PLUGINS.value = enabled
+        setConfigFlag("pluginsEngine", enabled)
+        val c = controller() ?: return
+        try {
+            if (enabled) {
+                c.javaClass.getMethod("init").invoke(c)
+            } else {
+                c.javaClass.getMethod("shutdown", Runnable::class.java).invoke(c, null)
+            }
+        } catch (t: Throwable) {
+            FileLog.e(t)
+        }
     }
 
     @JvmStatic
@@ -117,7 +121,7 @@ object PythonEngineBridge {
         if (!InuConfig.PYTHON_PLUGINS.value) return false
         val c = controller() ?: return false
         return try {
-            c.javaClass.getMethod("isEngineEnabled").invoke(c) as? Boolean ?: false
+            c.javaClass.getMethod("isInitialized").invoke(c) as? Boolean ?: false
         } catch (t: Throwable) {
             FileLog.e(t)
             false
@@ -126,17 +130,17 @@ object PythonEngineBridge {
 
     @JvmStatic
     fun setDeveloperMode(enabled: Boolean) {
-        invokeController("setDeveloperMode", arrayOf(Boolean::class.javaPrimitiveType), arrayOf(enabled))
+        setConfigProp("setPluginsDevMode", enabled)
     }
 
     @JvmStatic
     fun setCompactView(enabled: Boolean) {
-        invokeController("setCompactView", arrayOf(Boolean::class.javaPrimitiveType), arrayOf(enabled))
+        setConfigProp("setPluginsCompactView", enabled)
     }
 
     @JvmStatic
     fun setSafeMode(enabled: Boolean) {
-        invokeController("setSafeMode", arrayOf(Boolean::class.javaPrimitiveType), arrayOf(enabled))
+        setConfigProp("setPluginsSafeMode", enabled)
     }
 
     @JvmStatic
@@ -144,8 +148,9 @@ object PythonEngineBridge {
         if (!InuConfig.PYTHON_PLUGINS.value) return
         val c = controller() ?: return
         try {
-            val current = c.javaClass.getMethod("isSafeMode").invoke(c) as? Boolean ?: false
+            val current = getConfigProp("getPluginsSafeMode")
             if (current != enabled) {
+                setSafeMode(enabled)
                 c.javaClass.getMethod("restart", Boolean::class.javaPrimitiveType).invoke(c, enabled)
             }
         } catch (t: Throwable) {
@@ -157,25 +162,27 @@ object PythonEngineBridge {
     fun plugins(): List<PluginEntry> {
         val c = controller() ?: return emptyList()
         return try {
-            val values = c.javaClass.getMethod("getPluginsSnapshot").invoke(c) as? Iterable<*> ?: return emptyList()
-            values.mapNotNull { plugin ->
+            val map = c.javaClass.getMethod("getPlugins").invoke(c) as? Map<*, *> ?: return emptyList()
+            val pinnedSet = getPinnedSet()
+            map.values.mapNotNull { plugin ->
                 if (plugin == null) return@mapNotNull null
                 val type = plugin.javaClass
-                val id = type.getField("id").get(plugin) as? String ?: return@mapNotNull null
-                val name = type.getField("name").get(plugin) as? String ?: id
-                val pinned = getControllerClass()?.getMethod("isPluginPinned", String::class.java)
-                    ?.invoke(null, id) as? Boolean ?: false
+                val id = type.getMethod("getId").invoke(plugin) as? String ?: return@mapNotNull null
+                val name = type.getMethod("getName").invoke(plugin) as? String ?: id
+                val error = type.getMethod("getError").invoke(plugin) as? Throwable
+                val hasSettings = c.javaClass.getMethod("hasPluginSettings", String::class.java)
+                    .invoke(c, id) as? Boolean ?: false
                 PluginEntry(
                     id = id,
                     name = name,
-                    description = type.getField("description").get(plugin) as? String,
-                    author = type.getField("author").get(plugin) as? String,
-                    version = type.getField("version").get(plugin) as? String,
-                    loadError = type.getField("loadError").get(plugin) as? String,
-                    hasSettings = type.getField("hasSettings").getBoolean(plugin),
-                    enabled = type.getField("enabled").getBoolean(plugin),
-                    pinned = pinned,
-                    icon = runCatching { type.getField("icon").get(plugin) as? String }.getOrNull(),
+                    description = type.getMethod("getDescription").invoke(plugin) as? String,
+                    author = type.getMethod("getAuthor").invoke(plugin) as? String,
+                    version = type.getMethod("getVersion").invoke(plugin) as? String,
+                    loadError = error?.localizedMessage ?: error?.toString(),
+                    hasSettings = hasSettings,
+                    enabled = type.getMethod("isEnabled").invoke(plugin) as? Boolean ?: false,
+                    pinned = id in pinnedSet,
+                    icon = runCatching { type.getMethod("getIcon").invoke(plugin) as? String }.getOrNull(),
                 )
             }.sortedWith(compareByDescending<PluginEntry> { it.pinned }.thenBy { it.name.lowercase() })
         } catch (t: Throwable) {
@@ -188,16 +195,6 @@ object PythonEngineBridge {
     private val mirrorCache = ConcurrentHashMap<String, Plugin>()
     private val settingsIds = ConcurrentHashMap.newKeySet<String>()
     private val pinnedIds = ConcurrentHashMap.newKeySet<String>()
-
-    private val PY_GRANTS = mapOf(
-        "messages.read" to listOf("account.read", "onUpdate"),
-        "messages.send" to listOf("account.write", "interceptSendMessage"),
-        "network" to listOf("fetch"),
-        "files" to listOf("fs", "unsafe.fs"),
-        "intents" to listOf("openUrl"),
-        "hooks" to listOf("unsafe.xposed"),
-        "native" to listOf("unsafe.jvm"),
-    )
 
     private val updatesDelegate = object : NotificationCenter.NotificationCenterDelegate {
         override fun didReceivedNotification(id: Int, account: Int, vararg args: Any?) {
@@ -216,18 +213,8 @@ object PythonEngineBridge {
         PluginManager.notifyChanged()
     }
 
-    private val PY_DISPLAY = mapOf(
-        "messages.read" to "account.read",
-        "messages.send" to "account.write",
-        "network" to "fetch",
-        "files" to "unsafe.fs",
-        "intents" to "openUrl",
-        "hooks" to "unsafe.xposed",
-        "native" to "unsafe.jvm",
-    )
-
     @JvmStatic
-    fun grantDisplayToken(key: String): String? = PY_DISPLAY[key]
+    fun grantDisplayToken(key: String): String? = null
 
     @JvmStatic
     fun isPython(plugin: Plugin): Boolean = plugin.id.startsWith(PY_PREFIX)
@@ -239,15 +226,6 @@ object PythonEngineBridge {
 
     @JvmStatic
     fun isPinned(plugin: Plugin): Boolean = pinnedIds.contains(pyId(plugin))
-
-    private fun grantsFor(id: String): List<String> = try {
-        val cls = Class.forName("app.exteraless.plugins.PluginPermissions")
-        val keys = cls.getMethod("getEffective", String::class.java).invoke(null, id) as? Collection<*>
-        keys.orEmpty().filterIsInstance<String>().flatMap { PY_GRANTS[it].orEmpty() }.distinct()
-    } catch (t: Throwable) {
-        FileLog.e(t)
-        emptyList()
-    }
 
     @JvmStatic
     fun mirrors(): List<Plugin> {
@@ -264,7 +242,7 @@ object PythonEngineBridge {
                 description = entry.description?.takeIf { it.isNotBlank() },
                 localizedDescriptions = emptyMap(),
                 icon = exteraIconSpec(entry.icon),
-                grants = grantsFor(entry.id),
+                grants = emptyList(),
                 pluginApi = null,
                 platform = null,
                 raw = emptyMap(),
@@ -312,10 +290,10 @@ object PythonEngineBridge {
     fun setPluginEnabled(id: String, enabled: Boolean, onDone: (String?) -> Unit) {
         val c = controller() ?: return onDone(id)
         try {
-            val callback = org.telegram.messenger.Utilities.Callback<String> { error -> onDone(error) }
+            val callback = Utilities.Callback<String> { error -> onDone(error) }
             c.javaClass.getMethod(
                 "setPluginEnabled", String::class.java, Boolean::class.javaPrimitiveType,
-                org.telegram.messenger.Utilities.Callback::class.java,
+                Utilities.Callback::class.java,
             ).invoke(c, id, enabled, callback)
         } catch (t: Throwable) {
             FileLog.e(t)
@@ -325,13 +303,8 @@ object PythonEngineBridge {
 
     @JvmStatic
     fun reloadPlugin(id: String, onDone: () -> Unit) {
-        val c = controller() ?: return onDone()
-        try {
-            c.javaClass.getMethod("reloadPlugin", String::class.java, Runnable::class.java)
-                .invoke(c, id, Runnable { onDone() })
-        } catch (t: Throwable) {
-            FileLog.e(t)
-            onDone()
+        setPluginEnabled(id, false) {
+            setPluginEnabled(id, true) { onDone() }
         }
     }
 
@@ -339,8 +312,8 @@ object PythonEngineBridge {
     fun deletePlugin(id: String, onDone: (String?) -> Unit) {
         val c = controller() ?: return onDone(id)
         try {
-            val callback = org.telegram.messenger.Utilities.Callback<String> { error -> onDone(error) }
-            c.javaClass.getMethod("deletePlugin", String::class.java, org.telegram.messenger.Utilities.Callback::class.java)
+            val callback = Utilities.Callback<String> { error -> onDone(error) }
+            c.javaClass.getMethod("deletePlugin", String::class.java, Utilities.Callback::class.java)
                 .invoke(c, id, callback)
         } catch (t: Throwable) {
             FileLog.e(t)
@@ -351,8 +324,13 @@ object PythonEngineBridge {
     @JvmStatic
     fun setPluginPinned(id: String, pinned: Boolean) {
         try {
-            getControllerClass()?.getMethod("setPluginPinned", String::class.java, Boolean::class.javaPrimitiveType)
-                ?.invoke(null, id, pinned)
+            val cls = getConfigClass() ?: return
+            val prefs = cls.getMethod("getPinnedPlugins").invoke(null) as? MutableSet<*> ?: return
+            @Suppress("UNCHECKED_CAST")
+            val next = HashSet(prefs as Set<String>)
+            if (pinned) next.add(id) else next.remove(id)
+            val editor = cls.getMethod("getEditor").invoke(null) as? android.content.SharedPreferences.Editor
+            editor?.putStringSet("pinnedPlugins", next)?.apply()
         } catch (t: Throwable) {
             FileLog.e(t)
         }
@@ -360,10 +338,10 @@ object PythonEngineBridge {
 
     @JvmStatic
     fun openPluginSettings(id: String, fragment: BaseFragment) {
+        val c = controller() ?: return
         try {
-            Class.forName("desu.inugram.helpers.plugins.PythonPluginUi")
-                .getMethod("openPluginSettingsById", String::class.java, BaseFragment::class.java)
-                .invoke(null, id, fragment)
+            c.javaClass.getMethod("openPluginSettings", BaseFragment::class.java, String::class.java, String::class.java)
+                .invoke(c, fragment, id, null)
         } catch (t: Throwable) {
             FileLog.e(t)
         }
@@ -380,14 +358,17 @@ object PythonEngineBridge {
         }
     }
 
-
     @JvmStatic
     fun handleMessageTap(activity: Activity?, message: MessageObject?): Boolean {
-        if (activity == null || message == null) return false
+        if (!InuConfig.PYTHON_PLUGINS.value || activity == null || message == null) return false
+        val name = message.documentName ?: return false
+        if (!name.endsWith(".plugin", ignoreCase = true)) return false
+        val fragment = LaunchActivity.getSafeLastFragment() ?: return false
+        val c = controller() ?: return false
         return try {
-            val cls = getInstallHelperClass() ?: return false
-            val m = cls.getMethod("handleMessageTap", Activity::class.java, MessageObject::class.java)
-            m.invoke(null, activity, message) as? Boolean ?: false
+            c.javaClass.getMethod("showInstallDialog", BaseFragment::class.java, MessageObject::class.java, String::class.java)
+                .invoke(c, fragment, message, null)
+            true
         } catch (t: Throwable) {
             FileLog.e(t)
             false
@@ -396,11 +377,15 @@ object PythonEngineBridge {
 
     @JvmStatic
     fun handleViewIntent(activity: Activity?, uri: Uri?): Boolean {
-        if (activity == null || uri == null) return false
+        if (!InuConfig.PYTHON_PLUGINS.value || activity == null || uri == null) return false
+        val path = uri.path ?: return false
+        if (!path.endsWith(".plugin", ignoreCase = true)) return false
+        val fragment = LaunchActivity.getSafeLastFragment() ?: return false
+        val c = controller() ?: return false
         return try {
-            val cls = getInstallHelperClass() ?: return false
-            val m = cls.getMethod("handleViewIntent", Activity::class.java, Uri::class.java)
-            m.invoke(null, activity, uri) as? Boolean ?: false
+            c.javaClass.getMethod("showInstallDialog", BaseFragment::class.java, String::class.java, Boolean::class.javaPrimitiveType)
+                .invoke(c, fragment, path, false)
+            true
         } catch (t: Throwable) {
             FileLog.e(t)
             false
@@ -410,134 +395,61 @@ object PythonEngineBridge {
     @JvmStatic
     fun isSettingsLink(path: String?, uri: Uri?): Boolean {
         if (!InuConfig.PYTHON_PLUGINS.value || path == null || uri == null) return false
-        val isOurHost = "entinysettings".equals(path, ignoreCase = true) ||
-                "entinygram".equals(path, ignoreCase = true) ||
-                "inugram".equals(path, ignoreCase = true)
-        val p = uri.getQueryParameter("p")
-        if (isOurHost && !p.isNullOrEmpty()) return true
-        return try {
-            val cls = getControllerClass() ?: return false
-            val m = cls.getMethod("isSettingsLink", String::class.java, Uri::class.java)
-            m.invoke(null, path, uri) as? Boolean ?: false
-        } catch (t: Throwable) {
-            FileLog.e(t)
-            false
-        }
+        return !uri.getQueryParameter("plugin").isNullOrEmpty()
     }
 
     @JvmStatic
     fun openSettingsLink(uri: Uri?) {
         if (!InuConfig.PYTHON_PLUGINS.value || uri == null) return
+        val pluginId = uri.getQueryParameter("plugin") ?: return
+        val setting = uri.getQueryParameter("setting")
+        val fragment = LaunchActivity.getSafeLastFragment() ?: return
+        val c = controller() ?: return
         try {
-            val cls = getControllerClass() ?: return
-            val m = cls.getMethod("openSettingsLink", Uri::class.java)
-            m.invoke(null, uri)
+            c.javaClass.getMethod("openPluginSettings", BaseFragment::class.java, String::class.java, String::class.java)
+                .invoke(c, fragment, pluginId, setting)
         } catch (t: Throwable) {
             FileLog.e(t)
-        }
-    }
-
-
-    @JvmStatic
-    fun hasIntentHandlers(): Boolean {
-        if (!InuConfig.PYTHON_PLUGINS.value) return false
-        return try {
-            val cls = getIntentsDispatcherClass() ?: return false
-            cls.getMethod("hasHandlers").invoke(null) as? Boolean ?: false
-        } catch (t: Throwable) {
-            FileLog.e(t)
-            false
-        }
-    }
-
-    @Suppress("UNCHECKED_CAST")
-    @JvmStatic
-    fun buildIntentContext(intent: Intent?, account: Int, fromIntent: Boolean): Any? {
-        if (!InuConfig.PYTHON_PLUGINS.value) return null
-        return try {
-            val cls = getIntentsDispatcherClass() ?: return null
-            val m = cls.getMethod("buildIntentContext", Intent::class.java, Int::class.javaPrimitiveType, Boolean::class.javaPrimitiveType)
-            m.invoke(null, intent, account, fromIntent)
-        } catch (t: Throwable) {
-            FileLog.e(t)
-            null
-        }
-    }
-
-    @Suppress("UNCHECKED_CAST")
-    @JvmStatic
-    fun buildUriContext(uri: Uri?, account: Int, fromIntent: Boolean): Any? {
-        if (!InuConfig.PYTHON_PLUGINS.value) return null
-        return try {
-            val cls = getIntentsDispatcherClass() ?: return null
-            val m = cls.getMethod("buildUriContext", Uri::class.java, Int::class.javaPrimitiveType, Boolean::class.javaPrimitiveType)
-            m.invoke(null, uri, account, fromIntent)
-        } catch (t: Throwable) {
-            FileLog.e(t)
-            null
-        }
-    }
-
-    @Suppress("UNCHECKED_CAST")
-    @JvmStatic
-    fun dispatchIntentBefore(context: Any?): Boolean {
-        if (!InuConfig.PYTHON_PLUGINS.value || context == null) return false
-        return try {
-            val cls = getIntentsDispatcherClass() ?: return false
-            val m = cls.getMethod("dispatchBefore", Map::class.java)
-            m.invoke(null, context) as? Boolean ?: false
-        } catch (t: Throwable) {
-            FileLog.e(t)
-            false
-        }
-    }
-
-    @Suppress("UNCHECKED_CAST")
-    @JvmStatic
-    fun dispatchIntentAfter(context: Any?) {
-        if (!InuConfig.PYTHON_PLUGINS.value || context == null) return
-        try {
-            val cls = getIntentsDispatcherClass() ?: return
-            val m = cls.getMethod("dispatchAfter", Map::class.java)
-            m.invoke(null, context)
-        } catch (t: Throwable) {
-            FileLog.e(t)
-        }
-    }
-
-
-    @JvmStatic
-    fun allowDatabaseAccess(): Boolean {
-        if (!InuConfig.PYTHON_PLUGINS.value) return true
-        return try {
-            val cls = getSinkGateClass() ?: return true
-            cls.getMethod("allowDatabaseAccess").invoke(null) as? Boolean ?: true
-        } catch (t: Throwable) {
-            FileLog.e(t)
-            true
         }
     }
 
     @JvmStatic
-    fun hasSendMessageHooks(): Boolean {
-        if (!InuConfig.PYTHON_PLUGINS.value) return false
-        val c = controller() ?: return false
-        return try {
-            c.javaClass.getMethod("hasSendMessageHooks").invoke(c) as? Boolean ?: false
-        } catch (t: Throwable) {
-            FileLog.e(t)
-            false
-        }
-    }
+    fun hasIntentHandlers(): Boolean = false
+
+    @JvmStatic
+    fun buildIntentContext(intent: Intent?, account: Int, fromIntent: Boolean): Any? = null
+
+    @JvmStatic
+    fun buildUriContext(uri: Uri?, account: Int, fromIntent: Boolean): Any? = null
+
+    @JvmStatic
+    fun dispatchIntentBefore(context: Any?): Boolean = false
+
+    @JvmStatic
+    fun dispatchIntentAfter(context: Any?) {}
+
+    @JvmStatic
+    fun allowDatabaseAccess(): Boolean = true
+
+    @JvmStatic
+    fun hasSendMessageHooks(): Boolean = isEngineEnabled()
 
     @JvmStatic
     fun executeOnSendMessageHook(account: Int, params: Any?): HookResult {
-        if (!InuConfig.PYTHON_PLUGINS.value) return HookResult.DEFAULT
+        if (!InuConfig.PYTHON_PLUGINS.value || params == null) return HookResult.DEFAULT
         val c = controller() ?: return HookResult.DEFAULT
         return try {
-            val m = c.javaClass.getMethod("executeOnSendMessageHook", Int::class.javaPrimitiveType, Any::class.java)
+            val m = c.javaClass.getMethod(
+                "executeSendMessageHook",
+                Int::class.javaPrimitiveType,
+                org.telegram.messenger.SendMessagesHelper.SendMessageParams::class.java,
+            )
             val res = m.invoke(c, account, params)
-            unwrapHookResult(res)
+            when {
+                res == null -> HookResult(true, null)
+                res !== params -> HookResult(false, res)
+                else -> HookResult.DEFAULT
+            }
         } catch (t: Throwable) {
             FileLog.e(t)
             HookResult.DEFAULT
@@ -545,37 +457,32 @@ object PythonEngineBridge {
     }
 
     @JvmStatic
-    fun hasAnyRequestHooks(): Boolean {
-        if (!InuConfig.PYTHON_PLUGINS.value) return false
-        val c = controller() ?: return false
-        return try {
-            c.javaClass.getMethod("hasAnyRequestHooks").invoke(c) as? Boolean ?: false
-        } catch (t: Throwable) {
-            FileLog.e(t)
-            false
-        }
-    }
+    fun hasAnyRequestHooks(): Boolean = isEngineEnabled()
 
     @JvmStatic
     fun hookName(obj: Any?): String {
         if (obj == null) return ""
         val cls = obj.javaClass
-        var name = hookNames[cls]
-        if (name == null) {
-            name = cls.simpleName
-            hookNames[cls] = name
-        }
-        return name
+        return hookNames.getOrPut(cls) { cls.simpleName }
     }
 
     @JvmStatic
     fun executePreRequestHook(account: Int, name: String, request: Any?): HookResult {
-        if (!InuConfig.PYTHON_PLUGINS.value) return HookResult.DEFAULT
+        if (!InuConfig.PYTHON_PLUGINS.value || request !is TLObject) return HookResult.DEFAULT
         val c = controller() ?: return HookResult.DEFAULT
         return try {
-            val m = c.javaClass.getMethod("executePreRequestHook", Int::class.javaPrimitiveType, String::class.java, Any::class.java)
-            val res = m.invoke(c, account, name, request)
-            unwrapHookResult(res)
+            val m = c.javaClass.getMethod(
+                "executePreRequestHook",
+                String::class.java,
+                Int::class.javaPrimitiveType,
+                TLObject::class.java,
+            )
+            val res = m.invoke(c, name, account, request)
+            when {
+                res == null -> HookResult(true, null)
+                res !== request -> HookResult(false, res)
+                else -> HookResult.DEFAULT
+            }
         } catch (t: Throwable) {
             FileLog.e(t)
             HookResult.DEFAULT
@@ -587,9 +494,16 @@ object PythonEngineBridge {
         if (!InuConfig.PYTHON_PLUGINS.value) return HookResult.DEFAULT
         val c = controller() ?: return HookResult.DEFAULT
         return try {
-            val m = c.javaClass.getMethod("executePostRequestHook", Int::class.javaPrimitiveType, String::class.java, Any::class.java, Any::class.java)
-            val res = m.invoke(c, account, name, response, error)
-            unwrapHookResult(res)
+            val m = c.javaClass.getMethod(
+                "executePostRequestHook",
+                String::class.java,
+                Int::class.javaPrimitiveType,
+                TLObject::class.java,
+                TLRPC.TL_error::class.java,
+            )
+            val res = m.invoke(c, name, account, response as? TLObject, error as? TLRPC.TL_error) ?: return HookResult.DEFAULT
+            val newResponse = res.javaClass.getMethod("getResponse").invoke(res)
+            if (newResponse !== response) HookResult(false, newResponse) else HookResult.DEFAULT
         } catch (t: Throwable) {
             FileLog.e(t)
             HookResult.DEFAULT
@@ -597,25 +511,25 @@ object PythonEngineBridge {
     }
 
     @JvmStatic
-    fun hasAnyUpdatesContainerHooks(): Boolean {
-        if (!InuConfig.PYTHON_PLUGINS.value) return false
-        val c = controller() ?: return false
-        return try {
-            c.javaClass.getMethod("hasAnyUpdatesContainerHooks").invoke(c) as? Boolean ?: false
-        } catch (t: Throwable) {
-            FileLog.e(t)
-            false
-        }
-    }
+    fun hasAnyUpdatesContainerHooks(): Boolean = isEngineEnabled()
 
     @JvmStatic
     fun executeOnUpdatesHook(account: Int, name: String, updates: Any?): HookResult {
-        if (!InuConfig.PYTHON_PLUGINS.value) return HookResult.DEFAULT
+        if (!InuConfig.PYTHON_PLUGINS.value || updates !is TLRPC.Updates) return HookResult.DEFAULT
         val c = controller() ?: return HookResult.DEFAULT
         return try {
-            val m = c.javaClass.getMethod("executeOnUpdatesHook", Int::class.javaPrimitiveType, String::class.java, Any::class.java)
-            val res = m.invoke(c, account, name, updates)
-            unwrapHookResult(res)
+            val m = c.javaClass.getMethod(
+                "executeUpdatesHook",
+                String::class.java,
+                Int::class.javaPrimitiveType,
+                TLRPC.Updates::class.java,
+            )
+            val res = m.invoke(c, name, account, updates)
+            when {
+                res == null -> HookResult(true, null)
+                res !== updates -> HookResult(false, res)
+                else -> HookResult.DEFAULT
+            }
         } catch (t: Throwable) {
             FileLog.e(t)
             HookResult.DEFAULT
@@ -623,31 +537,30 @@ object PythonEngineBridge {
     }
 
     @JvmStatic
-    fun hasAnyUpdateHooks(): Boolean {
-        if (!InuConfig.PYTHON_PLUGINS.value) return false
-        val c = controller() ?: return false
-        return try {
-            c.javaClass.getMethod("hasAnyUpdateHooks").invoke(c) as? Boolean ?: false
-        } catch (t: Throwable) {
-            FileLog.e(t)
-            false
-        }
-    }
+    fun hasAnyUpdateHooks(): Boolean = isEngineEnabled()
 
     @JvmStatic
     fun executeOnUpdateHook(account: Int, name: String, update: Any?): HookResult {
-        if (!InuConfig.PYTHON_PLUGINS.value) return HookResult.DEFAULT
+        if (!InuConfig.PYTHON_PLUGINS.value || update !is TLRPC.Update) return HookResult.DEFAULT
         val c = controller() ?: return HookResult.DEFAULT
         return try {
-            val m = c.javaClass.getMethod("executeOnUpdateHook", Int::class.javaPrimitiveType, String::class.java, Any::class.java)
-            val res = m.invoke(c, account, name, update)
-            unwrapHookResult(res)
+            val m = c.javaClass.getMethod(
+                "executeUpdateHook",
+                String::class.java,
+                Int::class.javaPrimitiveType,
+                TLRPC.Update::class.java,
+            )
+            val res = m.invoke(c, name, account, update)
+            when {
+                res == null -> HookResult(true, null)
+                res !== update -> HookResult(false, res)
+                else -> HookResult.DEFAULT
+            }
         } catch (t: Throwable) {
             FileLog.e(t)
             HookResult.DEFAULT
         }
     }
-
 
     @JvmStatic
     fun dispatchOpenFile(
@@ -655,15 +568,18 @@ object PythonEngineBridge {
         message: MessageObject?, activity: Activity?, parentFragment: Any?, account: Int
     ): Boolean {
         if (!InuConfig.PYTHON_PLUGINS.value || file == null || fileName == null) return false
+        if (!fileName.endsWith(".plugin", ignoreCase = true)) return false
+        val fragment = (parentFragment as? BaseFragment) ?: LaunchActivity.getSafeLastFragment() ?: return false
+        val c = controller() ?: return false
         return try {
-            val cls = getFilesControllerClass() ?: return false
-            val m = cls.getMethod(
-                "dispatchOpenFile",
-                File::class.java, String::class.java, String::class.java,
-                MessageObject::class.java, Activity::class.java,
-                org.telegram.ui.ActionBar.BaseFragment::class.java, Int::class.javaPrimitiveType
-            )
-            m.invoke(null, file, fileName, mimeType, message, activity, parentFragment, account) as? Boolean ?: false
+            if (message != null) {
+                c.javaClass.getMethod("showInstallDialog", BaseFragment::class.java, MessageObject::class.java, String::class.java)
+                    .invoke(c, fragment, message, file.absolutePath)
+            } else {
+                c.javaClass.getMethod("showInstallDialog", BaseFragment::class.java, String::class.java, Boolean::class.javaPrimitiveType)
+                    .invoke(c, fragment, file.absolutePath, false)
+            }
+            true
         } catch (t: Throwable) {
             FileLog.e(t)
             false
@@ -703,9 +619,7 @@ object PythonEngineBridge {
         }
     }
 
-
     private fun invokeController(method: String, types: Array<Class<*>?>, args: Array<Any?>) {
-        if (!InuConfig.PYTHON_PLUGINS.value && method !in setOf("init", "setEngineEnabled", "setDeveloperMode", "setCompactView", "setSafeMode")) return
         try {
             val c = controller() ?: return
             c.javaClass.getMethod(method, *types).invoke(c, *args)
@@ -714,19 +628,16 @@ object PythonEngineBridge {
         }
     }
 
-    private fun controller(): Any? {
-        return try {
-            val cls = getControllerClass() ?: return null
-            cls.getMethod("getInstance").invoke(null)
-        } catch (t: Throwable) {
-            null
-        }
+    private fun controller(): Any? = try {
+        getControllerClass()?.getMethod("getInstance")?.invoke(null)
+    } catch (_: Throwable) {
+        null
     }
 
     private fun getControllerClass(): Class<*>? {
         if (controllerClass == null) {
             try {
-                controllerClass = Class.forName("app.exteraless.plugins.PluginsController")
+                controllerClass = Class.forName("com.exteragram.messenger.plugins.PluginsController")
             } catch (t: Throwable) {
                 FileLog.e(t)
             }
@@ -734,70 +645,40 @@ object PythonEngineBridge {
         return controllerClass
     }
 
-    private fun getInstallHelperClass(): Class<*>? {
-        if (installHelperClass == null) {
+    private fun getConfigClass(): Class<*>? {
+        if (configClass == null) {
             try {
-                installHelperClass = Class.forName("app.exteraless.plugins.PluginInstallHelper")
-            } catch (t: Throwable) {
-                FileLog.e(t)
+                configClass = Class.forName("com.exteragram.messenger.ExteraConfigKt")
+            } catch (_: Throwable) {
             }
         }
-        return installHelperClass
+        return configClass
     }
 
-    private fun getIntentsDispatcherClass(): Class<*>? {
-        if (intentsDispatcherClass == null) {
-            try {
-                intentsDispatcherClass = Class.forName("app.exteraless.plugins.intents.IntentsDispatcher")
-            } catch (t: Throwable) {
-                FileLog.e(t)
-            }
+    private fun setConfigFlag(field: String, value: Boolean) {
+        try {
+            getConfigClass()?.getField(field)?.setBoolean(null, value)
+        } catch (_: Throwable) {
         }
-        return intentsDispatcherClass
     }
 
-    private fun getSinkGateClass(): Class<*>? {
-        if (sinkGateClass == null) {
-            try {
-                sinkGateClass = Class.forName("app.exteraless.plugins.PluginSinkGate")
-            } catch (t: Throwable) {
-                FileLog.e(t)
-            }
+    private fun setConfigProp(setter: String, value: Boolean) {
+        try {
+            getConfigClass()?.getMethod(setter, Boolean::class.javaPrimitiveType)?.invoke(null, value)
+        } catch (_: Throwable) {
         }
-        return sinkGateClass
     }
 
-    private fun getFilesControllerClass(): Class<*>? {
-        if (filesControllerClass == null) {
-            try {
-                filesControllerClass = Class.forName("app.exteraless.plugins.files.FilesControllerJava")
-            } catch (t: Throwable) {
-                FileLog.e(t)
-            }
-        }
-        return filesControllerClass
+    private fun getConfigProp(getter: String): Boolean = try {
+        getConfigClass()?.getMethod(getter)?.invoke(null) as? Boolean ?: false
+    } catch (_: Throwable) {
+        false
     }
 
-    private fun unwrapHookResult(result: Any?): HookResult {
-        if (result == null) return HookResult.DEFAULT
-        return try {
-            var m = hookResultCancelMethod
-            if (m == null) {
-                m = result.javaClass.getMethod("isCancel")
-                hookResultCancelMethod = m
-            }
-            var f = hookResultValueField
-            if (f == null) {
-                f = result.javaClass.getField("value")
-                hookResultValueField = f
-            }
-            val isCancel = m.invoke(result) as? Boolean ?: false
-            val strategy = result.javaClass.getField("strategy").get(result).toString()
-            val value = if (strategy == "MODIFY" || strategy == "MODIFY_FINAL") f.get(result) else null
-            HookResult(isCancel, value)
-        } catch (t: Throwable) {
-            FileLog.e(t)
-            HookResult.DEFAULT
-        }
+    private fun getPinnedSet(): Set<String> = try {
+        @Suppress("UNCHECKED_CAST")
+        (getConfigClass()?.getMethod("getPinnedPlugins")?.invoke(null) as? Set<String>) ?: emptySet()
+    } catch (_: Throwable) {
+        emptySet()
     }
 }

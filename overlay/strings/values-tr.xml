@@ -189,9 +189,4 @@
     <string name="InuPythonPlugins">Python plugins</string>
     <string name="InuPythonPluginsInfo">Run Python, Elyx and DEX plugins alongside JavaScript plugins.</string>
     <string name="InuPythonPluginsDevInfo">Runs the plugin development server. Restart the app after changing this setting.</string>
-    <string name="InuAnalyticsTitle">Ön sürüm analitiği</string>
-    <string name="InuAnalyticsInfo">Bu, entinyGram uygulamasının bir ön sürümüdür.\n\nKabul ederseniz uygulama, etkinleştirilmiş ayarları ve çökme raporlarını rastgele bir kurulum kimliği, cihaz modeliniz ve Android sürümünüzle birlikte gönderir. Raporlar mesaj içeriklerini, dosyaları ve API anahtarlarını içermez. Çökme raporları bir sonraki başlatmadan sonra gönderilir.\n\nReddederseniz yalnızca kurulum kimliği, cihaz modeli, Android sürümü ve ret kararınız bir kez gönderilir. Ayarlar ve çökme raporları gönderilmez.\n\nSeçiminiz bu kurulum için kaydedilir. Kararlı sürümler analitik içermez.</string>
-    <string name="InuAnalyticsAgree">Kabul ediyorum</string>
-    <string name="InuAnalyticsDecline">Reddet</string>
-    <string name="InuAnalyticsSaveFailed">Seçiminiz kaydedilemedi. Lütfen tekrar deneyin.</string>
 </resources>

@@ -92,9 +92,9 @@ export function main(argv = Bun.argv.slice(2)) {
     console.error(`no key at ${values.key}`);
     return 1;
   }
-  const source = path.join(BUNDLE, "engine", "python");
+  const source = path.join(BUNDLE, "engine", "pysdk", "src");
   if (!fs.existsSync(source)) {
-    console.error("engine/python is missing; run apply.ts, then apply.ts --revert");
+    console.error("engine/pysdk/src is missing; run apply.ts, then apply.ts --revert");
     return 1;
   }
   const out = path.join(BUNDLE, "var", "out", "sdk");

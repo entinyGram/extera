@@ -1,11 +1,7 @@
 {
   "upstream": {
-    "url": "https://github.com/exteraless/exteraless.git",
-    "commit": "c83765c4151d50ba514325ddf0a3262769729dc6"
-  },
-  "runtime_upstream": {
-    "url": "https://github.com/exteraless/chaquopy.git",
-    "commit": "eab341a401913ac50254ff20e9efeebeaae872ef"
+    "url": "https://github.com/exteraSquad/exteraGram.git",
+    "commit": "b4d852f48f2734a0bee1a74a0939be621612262a"
   },
   "host": {
     "commit": "4593a9d10d05dcae87d596ec64f932c4aadff178",

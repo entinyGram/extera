@@ -7,17 +7,24 @@ import android.view.Gravity
 import android.view.View
 import android.widget.FrameLayout
 import android.widget.LinearLayout
-import app.exteraless.plugins.Plugin
-import app.exteraless.plugins.PluginsController
-import org.json.JSONArray
-import org.json.JSONObject
+import com.exteragram.messenger.plugins.Plugin
+import com.exteragram.messenger.plugins.PluginsController
+import com.exteragram.messenger.plugins.models.CustomSetting
+import com.exteragram.messenger.plugins.models.DividerSetting
+import com.exteragram.messenger.plugins.models.EditTextSetting
+import com.exteragram.messenger.plugins.models.HeaderSetting
+import com.exteragram.messenger.plugins.models.InputSetting
+import com.exteragram.messenger.plugins.models.SelectorSetting
+import com.exteragram.messenger.plugins.models.SettingItem
+import com.exteragram.messenger.plugins.models.SwitchSetting
+import com.exteragram.messenger.plugins.models.TextSetting
 import org.telegram.messenger.AndroidUtilities
 import org.telegram.messenger.FileLog
 import org.telegram.messenger.LocaleController
+import org.telegram.messenger.NotificationCenter
 import org.telegram.messenger.R
 import org.telegram.ui.ActionBar.AlertDialog
 import org.telegram.ui.ActionBar.Theme
-import org.telegram.ui.Cells.TextCell
 import org.telegram.ui.Components.EditTextBoldCursor
 import org.telegram.ui.Components.LayoutHelper
 import org.telegram.ui.Components.UItem
@@ -27,41 +34,50 @@ import java.util.IdentityHashMap
 open class PythonPluginSettingsActivity(
     private val plugin: Plugin,
     private var targetSetting: String? = null,
-    private val path: List<String> = emptyList(),
+    private val initialSettings: List<SettingItem> = emptyList(),
+    private val onBackPressed: Runnable? = null,
     private val pageTitle: String? = null,
-) : SettingsPageActivity() {
+) : SettingsPageActivity(), NotificationCenter.NotificationCenterDelegate {
     private val controller get() = PluginsController.getInstance()
-    private var rows = emptyList<JSONObject>()
-    private val rowsByItem = IdentityHashMap<UItem, JSONObject>()
-    private val ids = HashMap<String, Int>()
-    private val sliders = HashMap<Int, Pair<String, SliderCell>>()
-    private var lastError: String? = null
-    private val reloadListener = Runnable { reloadRows() }
+    private var rows = emptyList<SettingItem>()
+    private val rowsByItem = IdentityHashMap<UItem, SettingItem>()
+    private val ids = HashMap<SettingItem, Int>()
+    private var resetItem: View? = null
 
-    override fun getTitle(): CharSequence = pageTitle ?: plugin.displayName
+    override fun getTitle(): CharSequence = pageTitle ?: plugin.getName()
 
     override fun onFragmentCreate(): Boolean {
-        controller.addSettingsReloadListener(plugin.id, reloadListener)
+        NotificationCenter.getGlobalInstance().addObserver(this, NotificationCenter.pluginSettingsRegistered)
+        NotificationCenter.getGlobalInstance().addObserver(this, NotificationCenter.pluginSettingsUnregistered)
         reloadRows()
         return super.onFragmentCreate()
     }
 
     override fun onFragmentDestroy() {
-        controller.removeSettingsReloadListener(plugin.id, reloadListener)
+        NotificationCenter.getGlobalInstance().removeObserver(this, NotificationCenter.pluginSettingsRegistered)
+        NotificationCenter.getGlobalInstance().removeObserver(this, NotificationCenter.pluginSettingsUnregistered)
+        onBackPressed?.run()
         super.onFragmentDestroy()
     }
 
+    override fun didReceivedNotification(id: Int, account: Int, vararg args: Any?) {
+        if (id == NotificationCenter.pluginSettingsRegistered || id == NotificationCenter.pluginSettingsUnregistered) {
+            val targetId = args.firstOrNull() as? String
+            if (targetId == null || targetId == plugin.getId()) {
+                reloadRows()
+            }
+        }
+    }
+
     override fun createView(context: Context): View {
-        sliders.clear()
         return super.createView(context).also {
-            if (path.isEmpty()) {
+            if (initialSettings.isEmpty()) {
                 resetItem = simpleActionBar.createMenu().addItem(0, R.drawable.msg_reset).also { item ->
                     item.contentDescription = LocaleController.getString(R.string.PluginsResetSettings)
                     item.setOnClickListener { reset() }
                 }
                 updateResetItem()
             }
-            AndroidUtilities.runOnUIThread { showTarget() }
         }
     }
 
@@ -70,24 +86,13 @@ open class PythonPluginSettingsActivity(
         reloadRows()
     }
 
-    private var resetItem: View? = null
-
     private fun updateResetItem() {
-        resetItem?.visibility = if (controller.hasPluginSettingsPreferences(plugin.id)) View.VISIBLE else View.GONE
+        resetItem?.visibility = if (controller.hasPluginSettingsPreferences(plugin.getId())) View.VISIBLE else View.GONE
     }
 
     fun reloadRows() {
-        try {
-            var data = JSONArray(controller.getPluginSettingsJson(plugin.id) ?: "[]")
-            for (owner in path) {
-                val holder = (0 until data.length()).mapNotNull { data.optJSONObject(it) }.firstOrNull { identity(it) == owner }
-                data = holder?.optJSONArray("sub_page") ?: JSONArray()
-            }
-            rows = (0 until data.length()).mapNotNull { data.optJSONObject(it) }
-            lastError = null
-        } catch (e: Exception) {
-            FileLog.e(e)
-            lastError = e.localizedMessage
+        rows = initialSettings.ifEmpty {
+            controller.getPluginSettingsList(plugin.getId()).orEmpty()
         }
         updateResetItem()
         listView?.adapter?.update(true)
@@ -95,289 +100,152 @@ open class PythonPluginSettingsActivity(
 
     override fun fillItems(items: ArrayList<UItem>, adapter: UniversalAdapter) {
         rowsByItem.clear()
-        val installed = controller.getPlugin(plugin.id)
+        val installed = controller.plugins[plugin.getId()]
         if (installed == null) {
             items.add(UItem.asShadow(LocaleController.getString(R.string.PluginPermissionsGone)))
             return
         }
-        installed.loadError?.takeIf { it.isNotBlank() }?.let { items.add(UItem.asShadow(it)) }
-        if (!installed.loaded) items.add(UItem.asShadow(LocaleController.getString(R.string.PluginsNotLoaded)))
-        lastError?.let { items.add(UItem.asShadow(it)) }
-        val occurrences = HashMap<String, Int>()
+        installed.getError()?.localizedMessage?.takeIf { it.isNotBlank() }?.let { items.add(UItem.asShadow(it)) }
+        if (!installed.isEnabled()) items.add(UItem.asShadow(LocaleController.getString(R.string.PluginsNotLoaded)))
         for (row in rows) {
-            val identity = identity(row)
-            val count = occurrences[identity] ?: 0
-            occurrences[identity] = count + 1
-            val id = ids.getOrPut("$identity:$count") { ROW_BASE + ids.size }
+            val id = ids.getOrPut(row) { ROW_BASE + ids.size }
             val item = rowItem(row, id) ?: continue
             rowsByItem[item] = row
             items.add(item)
         }
-        if (rows.isEmpty() && installed.loaded && lastError == null) items.add(UItem.asShadow(LocaleController.getString(R.string.PluginsNoSettings)))
-        if (path.isEmpty()) {
-            items.add(UItem.asShadow(null))
-            items.add(mkSubPageButton(PERMISSIONS, R.drawable.msg_permissions, LocaleController.getString(R.string.PluginPermissions)))
-            val watchdog = controller.watchdog
-            items.add(UItem.asCheck(WATCHDOG, LocaleController.getString(R.string.PluginWatchdogWarnings)).also { it.checked = !watchdog.isWarningMuted(plugin.id) })
-            items.add(UItem.asShadow(LocaleController.getString(R.string.PluginWatchdogWarningsInfo)))
+        if (rows.isEmpty() && installed.isEnabled()) {
+            items.add(UItem.asShadow(LocaleController.getString(R.string.PluginsNoSettings)))
         }
         items.add(UItem.asShadow(null))
     }
 
-    private fun rowItem(row: JSONObject, id: Int): UItem? {
-        val type = row.optString("type")
-        val item = when (type) {
-            "header" -> UItem.asHeader(row.optString("text"))
-            "divider" -> UItem.asShadow(optional(row, "text"))
-            "switch" -> {
-                val subtext = optional(row, "subtext")
-                if (subtext == null) {
-                    UItem.asCheck(id, title(row)).also { it.checked = row.optBoolean("value") }
-                } else {
-                    UItem.asButtonCheck(id, title(row), subtext).also {
-                        it.checked = row.optBoolean("value")
-                        it.onBind { view -> (view as? org.telegram.ui.Cells.NotificationsCheckCell)?.setDrawLine(false) }
-                    }
-                }
-            }
-            "custom" -> customItem(row, id) ?: return null
-            "slider" -> sliderItem(row, id) ?: return null
-            else -> UItem.asButton(id, icon(row), title(row), when (type) {
-                "selector" -> row.optJSONArray("items")?.optString(row.optInt("value", row.optInt("default")))
-                "input", "edittext" -> row.optString("value")
-                else -> null
-            }).also { item ->
-                item.red = row.optBoolean("red")
-                item.accent = row.optBoolean("accent")
-                item.onBind { view ->
-                    (view as? TextCell)?.setSubtitle(optional(row, "subtext"))
-                }
+    private fun rowItem(row: SettingItem, id: Int): UItem? = when (row) {
+        is HeaderSetting -> UItem.asHeader(row.text)
+        is DividerSetting -> UItem.asShadow(row.text?.takeIf { it.isNotBlank() })
+        is SwitchSetting -> {
+            val checked = controller.getPluginSettingBoolean(plugin.getId(), row.key, row.defaultValue)
+            val subtext = row.subtext?.takeIf { it.isNotBlank() }
+            if (subtext == null) {
+                UItem.asCheck(id, row.text).also { it.checked = checked }
+            } else {
+                UItem.asButtonCheck(id, row.text, subtext).also { it.checked = checked }
             }
         }
-        item.id = id
-        return item
-    }
-
-    private fun customItem(row: JSONObject, id: Int): UItem? {
-        val ctx = context ?: return null
-        val viewId = optional(row, "view_id") ?: return null
-        val content = controller.getPluginSettingsCustomContent(plugin.id, viewId, ctx) ?: return null
-        val raw = if (content is UItem) UItem(content.viewType, content.selectable).also { copy ->
-            UItem::class.java.fields.filterNot { java.lang.reflect.Modifier.isStatic(it.modifiers) }.forEach { field ->
-                field.set(copy, field.get(content))
+        is SelectorSetting -> {
+            val idx = controller.getPluginSettingInt(plugin.getId(), row.key, row.defaultValue)
+            val value = row.items.getOrNull(idx).orEmpty()
+            UItem.asButton(id, icon(row), row.text, value)
+        }
+        is InputSetting -> {
+            val value = controller.getPluginSettingString(plugin.getId(), row.key, row.defaultValue).orEmpty()
+            UItem.asButton(id, icon(row), row.text, value)
+        }
+        is EditTextSetting -> {
+            val value = controller.getPluginSettingString(plugin.getId(), row.key, row.defaultValue).orEmpty()
+            UItem.asButton(id, icon(row), row.hint ?: row.key, value)
+        }
+        is TextSetting -> {
+            UItem.asButton(id, icon(row), row.text, null as String?).also {
+                it.red = row.red
+                it.accent = row.accent
             }
-        } else UItem.asCustom(content as? View ?: return null, LayoutHelper.WRAP_CONTENT)
-        if (raw.viewType >= 0 || raw.view == null) return raw.also { it.id = id }
-        val child = raw.view
-        val wrapper = FrameLayout(ctx).apply {
-            AndroidUtilities.removeFromParent(child)
-            addView(child, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT.toFloat()))
-            setOnClickListener { clickRow(row, raw, this) }
-            setOnLongClickListener { longClickRow(row, raw, this) }
         }
-        return UItem.asCustom(wrapper, raw.intValue.takeIf { it > 0 } ?: LayoutHelper.WRAP_CONTENT).also {
-            it.id = id
-            it.settingItem = raw.settingItem
-        }
-    }
-
-    private fun sliderItem(row: JSONObject, id: Int): UItem? {
-        val ctx = context ?: return null
-        val min = row.optDouble("min", 0.0).toFloat()
-        val max = row.optDouble("max", 100.0).toFloat()
-        val step = row.optDouble("step", 1.0).toFloat()
-        if (!min.isFinite() || !max.isFinite() || !step.isFinite() || max <= min || step <= 0f) return null
-        val value = row.optDouble("value", min.toDouble()).toFloat().let { if (it.isFinite()) it.coerceIn(min, max) else min }
-        val config = "$min:$max:$step:${title(row)}"
-        val cached = sliders[id]?.takeIf { it.first == config }?.second
-        val cell = cached ?: SliderCell(ctx, min, max, value, value, step, title(row),
-            format = { number(it, row.optBoolean("integral")) },
-            onChanged = {},
-            onReleased = { changed ->
-                val current = rows.firstOrNull { identity(it) == identity(row) } ?: row
-                update(current, if (current.optBoolean("integral")) changed.toInt() else changed)
-            }).also { sliders[id] = config to it }
-        cell.updateValue(value)
-        return UItem.asCustom(cell, LayoutHelper.WRAP_CONTENT).also { it.id = id }
+        is CustomSetting -> null
+        else -> null
     }
 
     override fun onClick(item: UItem, view: View, position: Int, x: Float, y: Float) {
-        when (item.id) {
-            PERMISSIONS -> presentFragment(PythonPluginPermissionsActivity(plugin.id))
-            WATCHDOG -> {
-                val watchdog = controller.watchdog
-                watchdog.setWarningMuted(plugin.id, !watchdog.isWarningMuted(plugin.id))
-            }
-            RESET -> reset()
-            else -> rowsByItem[item]?.let { clickRow(it, item, view) }
-        }
-    }
-
-    private fun clickRow(row: JSONObject, item: UItem, view: View) {
-        when (row.optString("type")) {
-            "switch" -> update(row, !row.optBoolean("value"))
-            "selector" -> {
-                val options = row.optJSONArray("items") ?: return
-                if (options.length() == 0) return
-                selector(row, options)
-            }
-            "input", "edittext" -> input(row)
-            "custom", "text" -> {
-                if (row.optJSONArray("sub_page") != null) openSubpage(row)
-                else optional(row, "callback_id")?.let { controller.dispatchSettingClick(plugin.id, it, view) }
-                    ?: controller.dispatchSettingsCustomClick(plugin.id, item, view, false)
+        val row = rowsByItem[item] ?: return
+        when (row) {
+            is SwitchSetting -> {
+                val next = !controller.getPluginSettingBoolean(plugin.getId(), row.key, row.defaultValue)
+                controller.setPluginSetting(plugin.getId(), row.key, next)
+                try { row.onChangeCallback?.call(next) } catch (t: Throwable) { FileLog.e(t) }
                 reloadRows()
             }
+            is SelectorSetting -> {
+                val current = controller.getPluginSettingInt(plugin.getId(), row.key, row.defaultValue)
+                RadioItemOptions.show(this, view, row.items.toList(), current) { chosen ->
+                    controller.setPluginSetting(plugin.getId(), row.key, chosen)
+                    try { row.onChangeCallback?.call(chosen) } catch (t: Throwable) { FileLog.e(t) }
+                    reloadRows()
+                }
+            }
+            is InputSetting -> promptInput(row.text, row.key, row.defaultValue, false, row.maxLength, row.onChangeCallback)
+            is EditTextSetting -> promptInput(row.hint ?: row.key, row.key, row.defaultValue, row.multiline, row.maxLength, row.onChangeCallback)
+            is TextSetting -> {
+                if (row.createSubFragmentCallback != null) {
+                    try {
+                        val sub = row.createSubFragmentCallback?.call() as? List<*> ?: emptyList<Any>()
+                        val items = sub.filterIsInstance<SettingItem>()
+                        presentFragment(PythonPluginSettingsActivity(plugin, null, items, null, row.text))
+                    } catch (t: Throwable) {
+                        FileLog.e(t)
+                    }
+                } else {
+                    try { row.onClickCallback?.call(view) } catch (t: Throwable) { FileLog.e(t) }
+                }
+            }
         }
     }
 
-    override fun onLongClick(item: UItem, view: View, position: Int, x: Float, y: Float): Boolean =
-        rowsByItem[item]?.let { longClickRow(it, item, view) } ?: false
-
-    private fun longClickRow(row: JSONObject, item: UItem, view: View): Boolean {
-        optional(row, "long_callback_id")?.let {
-            controller.dispatchSettingClick(plugin.id, it, view)
-            reloadRows()
-            return true
-        }
-        if (controller.dispatchSettingsCustomClick(plugin.id, item, view, true)) return true
-        val alias = optional(row, "link_alias") ?: return false
-        val link = PluginsController.settingsLink(plugin.id, alias) ?: return false
-        AndroidUtilities.addToClipboard(link)
-        org.telegram.ui.Components.BulletinFactory.of(this).createCopyLinkBulletin().show()
-        return true
-    }
-
-    private fun update(row: JSONObject, value: Any) {
-        val key = optional(row, "key") ?: return
-        row.put("value", value)
-        controller.notifySettingChanged(plugin.id, key, if (value is String) JSONObject.quote(value) else value.toString())
-        reloadRows()
-    }
-
-    private fun input(row: JSONObject) {
+    private fun promptInput(title: String?, key: String, defaultValue: String?, multiline: Boolean, maxLength: Int, onChange: com.chaquo.python.PyObject?) {
         val ctx = context ?: return
-        val multiline = row.optBoolean("multiline")
-        val field = EditTextBoldCursor(ctx).apply {
-            background = null
-            setTextSize(android.util.TypedValue.COMPLEX_UNIT_DIP, 16f)
+        val current = controller.getPluginSettingString(plugin.getId(), key, defaultValue).orEmpty()
+        val edit = EditTextBoldCursor(ctx).apply {
+            setTextSize(1, 16f)
             setTextColor(Theme.getColor(Theme.key_dialogTextBlack, resourceProvider))
             setHintTextColor(Theme.getColor(Theme.key_dialogTextHint, resourceProvider))
-            setLineColors(Theme.getColor(Theme.key_dialogInputField, resourceProvider),
-                Theme.getColor(Theme.key_dialogInputFieldActivated, resourceProvider), Theme.getColor(Theme.key_text_RedBold, resourceProvider))
-            setCursorColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText, resourceProvider))
-            inputType = InputType.TYPE_CLASS_TEXT or if (multiline) InputType.TYPE_TEXT_FLAG_MULTI_LINE else 0
-            setSingleLine(!multiline)
-            minLines = if (multiline) 4 else 1
-            maxLines = if (multiline) 8 else 1
-            gravity = Gravity.TOP or Gravity.START
-            setText(row.optString("value"))
-            setSelection(length())
-            hint = optional(row, "hint") ?: LocaleController.getString(R.string.PluginsEnterValue)
-            row.optInt("max_length").takeIf { it > 0 }?.let { filters = arrayOf(InputFilter.LengthFilter(it)) }
-        }
-        val content = LinearLayout(ctx).apply {
-            orientation = LinearLayout.VERTICAL
-            addView(field, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 24f, 8f, 24f, 12f))
-        }
-        val dialog = AlertDialog.Builder(ctx, resourceProvider).setTitle(title(row)).setView(content)
-            .setNegativeButton(LocaleController.getString(R.string.Cancel), null)
-            .setPositiveButton(LocaleController.getString(R.string.Done)) { _, _ -> update(row, field.text.toString()) }.create()
-        dialog.setOnDismissListener { AndroidUtilities.hideKeyboard(field) }
-        dialog.setOnShowListener { field.requestFocus(); AndroidUtilities.showKeyboard(field) }
-        showDialog(dialog)
-    }
-
-    private fun selector(row: JSONObject, options: JSONArray) {
-        val ctx = context ?: return
-        val current = row.optInt("value", row.optInt("default")).coerceIn(0, options.length() - 1)
-        val list = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL }
-        var dialog: AlertDialog? = null
-        for (i in 0 until options.length()) {
-            val cell = org.telegram.ui.Cells.RadioColorCell(ctx, resourceProvider)
-            cell.setPadding(AndroidUtilities.dp(4f), 0, AndroidUtilities.dp(4f), 0)
-            cell.setCheckColor(Theme.getColor(Theme.key_radioBackground, resourceProvider), Theme.getColor(Theme.key_dialogRadioBackgroundChecked, resourceProvider))
-            cell.setTextAndValue(options.optString(i), i == current)
-            cell.background = Theme.createSelectorDrawable(Theme.getColor(Theme.key_listSelector, resourceProvider), Theme.RIPPLE_MASK_ALL)
-            cell.setOnClickListener {
-                dialog?.dismiss()
-                update(row, i)
+            setText(current)
+            setSelection(current.length)
+            if (multiline) {
+                isSingleLine = false
+                inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE
+                gravity = Gravity.TOP or Gravity.START
+            } else {
+                isSingleLine = true
+                inputType = InputType.TYPE_CLASS_TEXT
             }
-            list.addView(cell, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT))
+            if (maxLength > 0) filters = arrayOf(InputFilter.LengthFilter(maxLength))
         }
-        dialog = AlertDialog.Builder(ctx, resourceProvider)
-            .setTitle(title(row))
-            .setView(list)
+        val box = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(FrameLayout(ctx).apply {
+                setPadding(AndroidUtilities.dp(24f), AndroidUtilities.dp(8f), AndroidUtilities.dp(24f), AndroidUtilities.dp(8f))
+                addView(edit, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT.toFloat()))
+            })
+        }
+        showDialog(AlertDialog.Builder(ctx, resourceProvider)
+            .setTitle(title ?: key)
+            .setView(box)
             .setNegativeButton(LocaleController.getString(R.string.Cancel), null)
-            .create()
-        showDialog(dialog)
+            .setPositiveButton(LocaleController.getString(R.string.Save)) { _, _ ->
+                val next = edit.text.toString()
+                controller.setPluginSetting(plugin.getId(), key, next)
+                try { onChange?.call(next) } catch (t: Throwable) { FileLog.e(t) }
+                reloadRows()
+            }.create())
     }
 
     private fun reset() {
         val ctx = context ?: return
         showDialog(AlertDialog.Builder(ctx, resourceProvider)
             .setTitle(LocaleController.getString(R.string.PluginsResetSettings))
-            .setMessage(AndroidUtilities.replaceTags(LocaleController.formatString(R.string.PluginsResetSettingsInfo, plugin.displayName)))
+            .setMessage(AndroidUtilities.replaceTags(LocaleController.formatString(R.string.PluginsResetSettingsInfo, plugin.getName())))
             .setNegativeButton(LocaleController.getString(R.string.Cancel), null)
-            .setPositiveButton(LocaleController.getString(R.string.OK)) { _, _ ->
-                controller.clearPluginSettingsPreferences(plugin.id, true)
-                controller.reloadPlugin(plugin.id) { reloadRows() }
+            .setPositiveButton(LocaleController.getString(R.string.Reset)) { _, _ ->
+                controller.clearPluginSettingsPreferences(plugin.getId(), false)
+                reloadRows()
             }.create())
     }
 
-    private fun openSubpage(row: JSONObject, target: String? = null) {
-        presentFragment(PythonPluginSettingsActivity(plugin, target, path + identity(row), title(row)))
+    private fun icon(row: SettingItem): Int {
+        val name = row.icon?.takeIf { it.isNotBlank() } ?: return 0
+        val ctx = context ?: return 0
+        return ctx.resources.getIdentifier(name, "drawable", ctx.packageName)
     }
-
-    private fun showTarget() {
-        val target = targetSetting ?: return
-        targetSetting = null
-        val alias = target.substringBefore(':')
-        val row = rows.firstOrNull { optional(it, "link_alias") == alias } ?: return
-        if (':' in target && row.optJSONArray("sub_page") != null) {
-            openSubpage(row, target.substringAfter(':'))
-            return
-        }
-        val item = rowsByItem.entries.firstOrNull { it.value === row }?.key ?: return
-        var position = 0
-        while (true) {
-            val candidate = listView?.adapter?.getItem(position) ?: break
-            if (candidate.id == item.id) {
-                listView.layoutManager.scrollToPositionWithOffset(position, AndroidUtilities.dp(60f))
-                listView.highlightRow { position }
-                break
-            }
-            position++
-        }
-    }
-
-    private fun title(row: JSONObject): String = optional(row, "text") ?: optional(row, "hint").orEmpty()
-    private fun identity(row: JSONObject): String = optional(row, "row_id") ?: optional(row, "key")
-        ?: optional(row, "link_alias") ?: "${row.optString("type")}:${title(row)}"
-    private fun optional(row: JSONObject, key: String): String? = if (row.isNull(key)) null else row.optString(key).takeIf { it.isNotEmpty() }
-    private val iconAliases = mapOf(
-        "msg_settings_ny" to listOf("msg_settings"),
-        "help" to listOf("msg_help"),
-        "msg_clock2" to listOf("menu_premium_clock"),
-        "msg_groups_new2" to listOf("msg_groups_create"),
-        "msg_paste" to listOf("msg_copy"),
-        "msg_persons" to listOf("msg_contacts"),
-        "input_suggest_s" to listOf("filled_bot_suggest_24"),
-    )
-    private fun drawableId(name: String): Int =
-        try { R.drawable::class.java.getField(name).getInt(null) } catch (_: ReflectiveOperationException) { 0 }
-    private fun icon(row: JSONObject): Int {
-        val name = optional(row, "icon") ?: return 0
-        val candidates = listOf(name, name.removeSuffix("_solar")) + (iconAliases[name] ?: emptyList())
-        return candidates.firstNotNullOfOrNull { drawableId(it).takeIf { id -> id != 0 } } ?: 0
-    }
-
-    private fun number(value: Float, integral: Boolean): String = if (integral || value == value.toLong().toFloat()) value.toLong().toString() else value.toString()
 
     companion object {
-        private const val PERMISSIONS = 1
-        private const val WATCHDOG = 2
-        private const val RESET = 3
         private const val ROW_BASE = 100
     }
 }

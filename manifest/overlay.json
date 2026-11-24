@@ -21,10 +21,6 @@
       ]
     },
     {
-      "source": "overlay/engine/build_runtime.py",
-      "target": "extera-plugins/engine/build_runtime.py"
-    },
-    {
       "source": "overlay/src/fork-app/ui/settings/PythonPluginPermissionsActivity.kt",
       "target": "src/fork-app/ui/settings/PythonPluginPermissionsActivity.kt"
     },
@@ -52,13 +48,6 @@
       ]
     },
     {
-      "source": "overlay/engine/java/app/exteraless/plugins/ui/PluginSettingsActivity.java",
-      "target": "extera-plugins/engine/java/app/exteraless/plugins/ui/PluginSettingsActivity.java",
-      "previous_sha256": [
-        "654727f6ca6261549f1be56c46fe028cd3bbbbbed8fc0cb81913a91a1e77db83"
-      ]
-    },
-    {
       "source": "overlay/res/drawable/inu_engine_inugram.xml",
       "target": "src/res/drawable/inu_engine_inugram.xml"
     },
@@ -71,68 +60,56 @@
       "target": "src/fork/ui/settings/PythonGrantRow.kt"
     },
     {
-      "source": "overlay/engine/java/de/robv/android/xposed/XposedBridge.java",
-      "target": "extera-plugins/engine/java/de/robv/android/xposed/XposedBridge.java"
-    },
-    {
-      "source": "overlay/engine/java/de/robv/android/xposed/XC_MethodHook.java",
-      "target": "extera-plugins/engine/java/de/robv/android/xposed/XC_MethodHook.java"
-    },
-    {
-      "source": "overlay/engine/java/de/robv/android/xposed/XC_MethodReplacement.java",
-      "target": "extera-plugins/engine/java/de/robv/android/xposed/XC_MethodReplacement.java"
-    },
-    {
-      "source": "overlay/engine/java/de/robv/android/xposed/callbacks/XCallback.java",
-      "target": "extera-plugins/engine/java/de/robv/android/xposed/callbacks/XCallback.java"
-    },
-    {
-      "source": "overlay/engine/java/de/robv/android/xposed/callbacks/IXUnhook.java",
-      "target": "extera-plugins/engine/java/de/robv/android/xposed/callbacks/IXUnhook.java"
-    },
-    {
-      "source": "overlay/src/fork/helpers/analytics/AnalyticsHelper.kt",
-      "target": "src/fork/helpers/analytics/AnalyticsHelper.kt"
-    },
-    {
-      "source": "overlay/src/fork/helpers/analytics/AnalyticsSettings.kt",
-      "target": "src/fork/helpers/analytics/AnalyticsSettings.kt"
-    },
-    {
-      "source": "overlay/engine/java/app/exteraless/plugins/ui/PluginsActivity.java",
-      "target": "extera-plugins/engine/java/app/exteraless/plugins/ui/PluginsActivity.java"
-    },
-    {
-      "source": "overlay/engine/java/com/exteragram/messenger/utils/chats/ChatUtils.java",
-      "target": "extera-plugins/engine/java/com/exteragram/messenger/utils/chats/ChatUtils.java"
-    },
-    {
-      "source": "overlay/engine/java/com/exteragram/messenger/ExteraConfig.java",
-      "target": "extera-plugins/engine/java/com/exteragram/messenger/ExteraConfig.java"
+      "source": "overlay/engine/java/com/exteragram/messenger/ExteraConfig.kt",
+      "target": "extera-plugins/engine/java/com/exteragram/messenger/ExteraConfig.kt"
     },
     {
       "source": "overlay/engine/java/com/exteragram/messenger/utils/AppUtils.java",
       "target": "extera-plugins/engine/java/com/exteragram/messenger/utils/AppUtils.java"
     },
     {
-      "source": "overlay/engine/java/app/exteraless/plugins/SdkUpdater.java",
-      "target": "extera-plugins/engine/java/app/exteraless/plugins/SdkUpdater.java"
+      "source": "overlay/engine/java/com/exteragram/messenger/utils/chats/ChatUtils.java",
+      "target": "extera-plugins/engine/java/com/exteragram/messenger/utils/chats/ChatUtils.java"
+    },
+    {
+      "source": "overlay/engine/java/com/exteragram/messenger/utils/text/LocaleUtils.java",
+      "target": "extera-plugins/engine/java/com/exteragram/messenger/utils/text/LocaleUtils.java"
+    },
+    {
+      "source": "overlay/engine/java/com/exteragram/messenger/utils/network/RemoteUtils.kt",
+      "target": "extera-plugins/engine/java/com/exteragram/messenger/utils/network/RemoteUtils.kt"
+    },
+    {
+      "source": "overlay/engine/java/com/exteragram/messenger/preferences/utils/SettingsRegistry.java",
+      "target": "extera-plugins/engine/java/com/exteragram/messenger/preferences/utils/SettingsRegistry.java"
+    },
+    {
+      "source": "overlay/engine/java/com/exteragram/messenger/plugins/utils/NativeCrashHandler.kt",
+      "target": "extera-plugins/engine/java/com/exteragram/messenger/plugins/utils/NativeCrashHandler.kt"
+    },
+    {
+      "source": "overlay/engine/java/com/exteragram/messenger/plugins/analyzer/AnalyzerUpdater.kt",
+      "target": "extera-plugins/engine/java/com/exteragram/messenger/plugins/analyzer/AnalyzerUpdater.kt"
+    },
+    {
+      "source": "overlay/engine/java/com/exteragram/messenger/plugins/catalog/PluginRepositoryLinks.kt",
+      "target": "extera-plugins/engine/java/com/exteragram/messenger/plugins/catalog/PluginRepositoryLinks.kt"
+    },
+    {
+      "source": "overlay/engine/java/com/exteragram/messenger/plugins/ui/PluginsActivity.kt",
+      "target": "extera-plugins/engine/java/com/exteragram/messenger/plugins/ui/PluginsActivity.kt"
+    },
+    {
+      "source": "overlay/engine/java/com/exteragram/messenger/plugins/ui/PluginSettingsActivity.kt",
+      "target": "extera-plugins/engine/java/com/exteragram/messenger/plugins/ui/PluginSettingsActivity.kt"
+    },
+    {
+      "source": "overlay/engine/java/com/exteragram/messenger/plugins/ui/components/Stubs.kt",
+      "target": "extera-plugins/engine/java/com/exteragram/messenger/plugins/ui/components/Stubs.kt"
     },
     {
       "source": "overlay/src/fork/helpers/update/PrivateUpdateSource.kt",
       "target": "src/fork/helpers/update/PrivateUpdateSource.kt"
-    },
-    {
-      "source": "overlay/engine/python/base_plugin.py",
-      "target": "extera-plugins/engine/python/base_plugin.py"
-    },
-    {
-      "source": "overlay/engine/python/log_utils.py",
-      "target": "extera-plugins/engine/python/log_utils.py"
-    },
-    {
-      "source": "overlay/engine/python/extera_utils/lifecycle.py",
-      "target": "extera-plugins/engine/python/extera_utils/lifecycle.py"
     },
     {
       "source": "overlay/src/fork/helpers/plugins/platform/PluginXposed.kt",

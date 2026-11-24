@@ -2,51 +2,28 @@
   "edits": [
     {
       "path": "worktree/build.gradle",
-      "before": "        classpath \"org.jetbrains.kotlin:kotlin-gradle-plugin:2.1.20\"\n    }\n}\nrepositories {\n    google()\n",
-      "after": "        classpath \"org.jetbrains.kotlin:kotlin-gradle-plugin:2.1.20\"\n        classpath 'com.chaquo.python:gradle:16.1.0'\n    }\n}\nrepositories {\n    google()\n"
+      "before": "    repositories {\n        mavenCentral()\n        google()\n        maven { url 'https://developer.huawei.com/repo/' }\n    }\n    dependencies {\n        classpath 'com.android.tools.build:gradle:8.13.2'\n        classpath 'com.google.gms:google-services:4.4.4'\n        classpath 'com.huawei.agconnect:agcp:1.9.1.301'\n        classpath 'com.google.firebase:firebase-crashlytics-gradle:3.0.8'\n        classpath \"org.jetbrains.kotlin:kotlin-gradle-plugin:2.1.20\"\n    }\n",
+      "after": "    repositories {\n        maven { url = uri('../extera-plugins/engine/maven') }\n        mavenCentral()\n        google()\n        maven { url 'https://developer.huawei.com/repo/' }\n    }\n    dependencies {\n        classpath 'com.android.tools.build:gradle:8.13.2'\n        classpath 'com.google.gms:google-services:4.4.4'\n        classpath 'com.huawei.agconnect:agcp:1.9.1.301'\n        classpath 'com.google.firebase:firebase-crashlytics-gradle:3.0.8'\n        classpath \"org.jetbrains.kotlin:kotlin-gradle-plugin:2.1.20\"\n        classpath 'com.chaquo.python:gradle:17.0.2'\n    }\n"
     },
     {
       "path": "worktree/TMessagesProj_App/build.gradle",
       "before": "apply plugin: 'com.android.application'\napply plugin: 'org.telegram.build-app-plugin'\napply plugin: 'kotlin-android'\n\nrepositories {\n    mavenCentral()\n    google()\n}\n\nconfigurations {\n    compile.exclude module: 'support-v4'\n",
-      "after": "apply plugin: 'com.android.application'\napply plugin: 'org.telegram.build-app-plugin'\napply plugin: 'kotlin-android'\napply plugin: 'com.chaquo.python'\n\nrepositories {\n    mavenCentral()\n    google()\n    maven { url 'https://maven.aliucord.com/releases' }\n}\n\nconfigurations {\n    compile.exclude module: 'support-v4'\n"
+      "after": "apply plugin: 'com.android.application'\napply plugin: 'org.telegram.build-app-plugin'\napply plugin: 'kotlin-android'\napply plugin: 'com.chaquo.python'\n\nrepositories {\n    maven { url = uri('../../extera-plugins/engine/maven') }\n    mavenCentral()\n    google()\n}\n\nconfigurations {\n    compile.exclude module: 'support-v4'\n"
     },
     {
       "path": "worktree/TMessagesProj_App/build.gradle",
       "before": "dependencies {\n    implementation project(':TMessagesProj')\n    implementation files('../TMessagesProj/libs/libgsaverification-client.aar')\n    implementation 'androidx.core:core:1.16.0'\n    if (!rootProject.ext.inuPluginless) {\n        implementation 'androidx.profileinstaller:profileinstaller:1.4.1'\n        shadowhookAar 'com.bytedance.android:shadowhook:2.0.1'\n    }\n",
-      "after": "dependencies {\n    implementation project(':TMessagesProj')\n    implementation project(':InuCore')\n    implementation files('../TMessagesProj/libs/libgsaverification-client.aar')\n    implementation 'androidx.core:core:1.16.0'\n    implementation 'androidx.fragment:fragment:1.8.5'\n    implementation 'org.mvel:mvel2:2.5.2.Final'\n    implementation 'com.linkedin.dexmaker:dexmaker:2.28.6'\n    implementation 'org.lsposed.hiddenapibypass:hiddenapibypass:6.1'\n    if (!rootProject.ext.inuPluginless) {\n        implementation 'androidx.profileinstaller:profileinstaller:1.4.1'\n        shadowhookAar 'com.bytedance.android:shadowhook:2.0.1'\n    }\n"
+      "after": "dependencies {\n    implementation project(':TMessagesProj')\n    implementation project(':InuCore')\n    implementation files('../TMessagesProj/libs/libgsaverification-client.aar')\n    implementation 'androidx.core:core:1.16.0'\n    implementation 'androidx.fragment:fragment:1.8.5'\n    implementation 'com.exteragram.hook:hook-core:1.0.0'\n    implementation 'com.exteragram.hook.thirdparty:lsplant:6.4-extera.8'\n    implementation 'io.github.immat0x1:simplifiles:0.1.6'\n    implementation 'org.mvel:mvel2:2.5.4.Final'\n    implementation 'com.linkedin.dexmaker:dexmaker:2.28.6'\n    implementation 'org.lsposed.hiddenapibypass:hiddenapibypass:6.1'\n    if (!rootProject.ext.inuPluginless) {\n        implementation 'androidx.profileinstaller:profileinstaller:1.4.1'\n        shadowhookAar 'com.bytedance.android:shadowhook:2.0.1'\n    }\n"
     },
     {
       "path": "worktree/TMessagesProj_App/build.gradle",
       "before": "            if (filters == null || filters.isEmpty()) {\n                abiFilters \"arm64-v8a\"\n            } else if (filters != 'all') {\n                abiFilters filters.split(',') as String[]\n            }\n        }\n\n        if (!rootProject.ext.inuPluginless) externalNativeBuild {\n",
-      "after": "            if (filters == null || filters.isEmpty()) {\n                abiFilters \"arm64-v8a\"\n            } else if (filters != 'all') {\n                abiFilters filters.split(',') as String[]\n            }\n        }\n\n        python {\n            version '3.11'\n            def pythonExecutable = System.getenv('CHAQUOPY_BUILD_PYTHON')\n            if (pythonExecutable) buildPython pythonExecutable\n            pip {\n                install 'setuptools'\n                install 'PyYAML'\n                install 'beautifulsoup4'\n                install 'debugpy'\n                install 'lxml'\n                install 'packaging'\n                install 'pillow'\n                install 'requests'\n            }\n        }\n\n        if (!rootProject.ext.inuPluginless) externalNativeBuild {\n",
-      "alternatives": [
-        "            if (filters == null || filters.isEmpty()) {\n                abiFilters \"arm64-v8a\"\n            } else if (filters != 'all') {\n                abiFilters filters.split(',') as String[]\n            }\n        }\n\n        python {\n            version '3.13'\n            pip {\n                install 'setuptools'\n                install 'PyYAML'\n            }\n        }\n\n        if (!rootProject.ext.inuPluginless) externalNativeBuild {\n"
-      ]
+      "after": "            if (filters == null || filters.isEmpty()) {\n                abiFilters \"arm64-v8a\"\n            } else if (filters != 'all') {\n                abiFilters filters.split(',') as String[]\n            }\n        }\n\n        python {\n            version '3.11'\n            def pythonExecutable = System.getenv('CHAQUOPY_BUILD_PYTHON') ?: System.getenv('BUILD_PYTHON')\n            if (pythonExecutable) buildPython pythonExecutable\n            pip {\n                install 'beautifulsoup4'\n                install 'debugpy'\n                install 'lxml'\n                install 'packaging'\n                install 'pillow'\n                install 'requests'\n                install 'PyYAML'\n            }\n        }\n\n        if (!rootProject.ext.inuPluginless) externalNativeBuild {\n"
     },
     {
       "path": "worktree/TMessagesProj_App/build.gradle",
       "before": "        include '**/liblsplant.so'\n    }\n    into inuTestJniLibsDir\n}\n",
       "after": "        include '**/liblsplant.so'\n    }\n    into inuTestJniLibsDir\n}\n\napply from: '../../extera-plugins/engine/engine.gradle'\n"
-    },
-    {
-      "path": "worktree/TMessagesProj/build.gradle",
-      "before": "def inuSources = fileTree(inuSourceDir) {\n    include '**/*.kt'\n",
-      "after": "def inuAnalytics = System.getenv('INU_BUILD_TYPE') == 'beta'\ndef inuSources = fileTree(inuSourceDir) {\n    include '**/*.kt'\n    if (!inuAnalytics) {\n        exclude '**/helpers/analytics/**'\n    }\n"
-    },
-    {
-      "path": "worktree/TMessagesProj/build.gradle",
-      "before": "    inputs.property('plugins', !rootProject.ext.inuPluginless)\n",
-      "after": "    inputs.property('plugins', !rootProject.ext.inuPluginless)\n    inputs.property('analytics', inuAnalytics)\n"
-    },
-    {
-      "path": "worktree/TMessagesProj/build.gradle",
-      "before": "                        if (argument != 'PLUGINS') throw new GradleException(\"${source}:${index + 1}: expected #if PLUGINS\")\n                        stack.add([parent: active, alternate: false, line: index + 1])\n                        active = active && !rootProject.ext.inuPluginless\n",
-      "after": "                        if (!(argument in ['PLUGINS', 'ANALYTICS'])) throw new GradleException(\"${source}:${index + 1}: expected #if PLUGINS or ANALYTICS\")\n                        def condition = argument == 'PLUGINS' ? !rootProject.ext.inuPluginless : inuAnalytics\n                        stack.add([parent: active, condition: condition, alternate: false, line: index + 1])\n                        active = active && condition\n"
-    },
-    {
-      "path": "worktree/TMessagesProj/build.gradle",
-      "before": "                        active = stack.last().parent && rootProject.ext.inuPluginless\n",
-      "after": "                        active = stack.last().parent && !stack.last().condition\n"
     }
   ]
 }

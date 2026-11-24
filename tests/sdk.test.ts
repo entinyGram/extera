@@ -46,10 +46,3 @@ test("sdk zip is deterministic, filtered and readable", () => {
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
-
-test("native runtime helper (python, runs inside gradle)", () => {
-  const python = buildPython();
-  if (!python) return;
-  const result = spawnSync(python, ["-m", "unittest", "-q", "test_build_runtime"], { cwd: path.join(BUNDLE, "tests"), encoding: "utf-8" });
-  expect(result.status, result.stderr).toBe(0);
-});

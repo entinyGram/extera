@@ -116,7 +116,7 @@
     {
       "path": "src/fork/InuHooks.kt",
       "before": "        desu.inugram.helpers.plugins.PluginCrashDialog.maybeShow(launchActivity)\n        // #endif\n",
-      "after": "        desu.inugram.helpers.plugins.PluginCrashDialog.maybeShow(launchActivity)\n        // #endif\n        desu.inugram.helpers.plugins.PythonEngineBridge.onAppEvent(\"app_resume\")\n        // #if ANALYTICS\n        AnalyticsHelper.onResume(launchActivity)\n        // #endif\n"
+      "after": "        desu.inugram.helpers.plugins.PluginCrashDialog.maybeShow(launchActivity)\n        // #endif\n        desu.inugram.helpers.plugins.PythonEngineBridge.onAppEvent(\"app_resume\")\n"
     },
     {
       "path": "src/fork/helpers/chat/ChatHelper.kt",
@@ -180,28 +180,8 @@
     },
     {
       "path": "src/fork/ui/settings/PluginInfoActivity.kt",
-      "before": "        items.add(UItem.asButton(BUTTON_SOURCE, R.drawable.inu_tabler_code, LocaleController.getString(R.string.InuPluginsViewSource)))\n        items.add(UItem.asButton(BUTTON_SHARE, R.drawable.msg_share, LocaleController.getString(R.string.ShareFile)))\n",
-      "after": "        if (plugin.source.isNotEmpty()) {\n            items.add(UItem.asButton(BUTTON_SOURCE, R.drawable.inu_tabler_code, LocaleController.getString(R.string.InuPluginsViewSource)))\n            items.add(UItem.asButton(BUTTON_SHARE, R.drawable.msg_share, LocaleController.getString(R.string.ShareFile)))\n        }\n"
-    },
-    {
-      "path": "src/fork/InuHooks.kt",
-      "before": "import desu.inugram.helpers.UrlCleanerHelper\n",
-      "after": "import desu.inugram.helpers.UrlCleanerHelper\n// #if ANALYTICS\nimport desu.inugram.helpers.analytics.AnalyticsHelper\n// #endif\n"
-    },
-    {
-      "path": "src/fork/InuHooks.kt",
-      "before": "        CrashReporter.install()\n        InuConfig.load(context)\n",
-      "after": "        CrashReporter.install()\n        // #if ANALYTICS\n        AnalyticsHelper.init(context)\n        // #endif\n        InuConfig.load(context)\n"
-    },
-    {
-      "path": "src/fork/helpers/CrashReporter.kt",
-      "before": "import desu.inugram.ui.CrashReportBottomSheet\n",
-      "after": "import desu.inugram.ui.CrashReportBottomSheet\n// #if ANALYTICS\nimport desu.inugram.helpers.analytics.AnalyticsHelper\n// #endif\n"
-    },
-    {
-      "path": "src/fork/helpers/CrashReporter.kt",
-      "before": "        override fun uncaughtException(t: Thread, e: Throwable) {\n            try {\n",
-      "after": "        override fun uncaughtException(t: Thread, e: Throwable) {\n            // #if ANALYTICS\n            AnalyticsHelper.recordCrash(e)\n            // #endif\n            try {\n"
+      "before": "        items.add(UItem.asButton(BUTTON_SOURCE, R.drawable.entiny_code, LocaleController.getString(R.string.InuPluginsViewSource)))\n        items.add(UItem.asButton(BUTTON_SHARE, R.drawable.msg_share, LocaleController.getString(R.string.ShareFile)))\n",
+      "after": "        if (plugin.source.isNotEmpty()) {\n            items.add(UItem.asButton(BUTTON_SOURCE, R.drawable.entiny_code, LocaleController.getString(R.string.InuPluginsViewSource)))\n            items.add(UItem.asButton(BUTTON_SHARE, R.drawable.msg_share, LocaleController.getString(R.string.ShareFile)))\n        }\n"
     },
     {
       "path": "src/fork/InuConfig.kt",

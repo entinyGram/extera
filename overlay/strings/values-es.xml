@@ -189,9 +189,4 @@
     <string name="InuPythonPlugins">Python plugins</string>
     <string name="InuPythonPluginsInfo">Run Python, Elyx and DEX plugins alongside JavaScript plugins.</string>
     <string name="InuPythonPluginsDevInfo">Runs the plugin development server. Restart the app after changing this setting.</string>
-    <string name="InuAnalyticsTitle">Analíticas de la versión preliminar</string>
-    <string name="InuAnalyticsInfo">Esta es una versión preliminar de entinyGram.\n\nSi aceptas, la aplicación envía los ajustes activados y los informes de fallos, junto con un identificador de instalación aleatorio, el modelo de tu dispositivo y la versión de Android. Los informes no incluyen el contenido de los mensajes, los archivos ni las claves de API. Los informes de fallos se envían después del siguiente inicio.\n\nSi rechazas, solo se envían una vez el identificador de instalación, el modelo del dispositivo, la versión de Android y tu rechazo. No se envían ajustes ni informes de fallos.\n\nTu elección se guarda para esta instalación. Las versiones estables no incluyen analíticas.</string>
-    <string name="InuAnalyticsAgree">Acepto</string>
-    <string name="InuAnalyticsDecline">Rechazar</string>
-    <string name="InuAnalyticsSaveFailed">No se pudo guardar tu elección. Inténtalo de nuevo.</string>
 </resources>
