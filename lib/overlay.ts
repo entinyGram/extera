@@ -349,8 +349,12 @@ function managed(bundle: string, manifest: Manifest, upstream: string, runtimeUp
   }
   for (const entry of manifest.files ?? []) {
     const target = relative(entry.target);
-    const payload = overlayFile(bundle, entry.source);
+    let payload = overlayFile(bundle, entry.source);
     if (payload === null) throw new InstallError(`payload is missing: ${entry.source}`);
+    const invite = readFile(path.join(bundle, "var", "update-invite"))?.toString().trim();
+    if (invite && target.endsWith("/PrivateUpdateSource.kt")) {
+      payload = Buffer.from(payload.toString().replace('INVITE_HASH = ""', `INVITE_HASH = "${invite}"`));
+    }
     desired.set(target, payload);
     const set = allowed.get(target) ?? new Set();
     for (const h of entry.previous_sha256 ?? []) set.add(h);

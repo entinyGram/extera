@@ -13,6 +13,10 @@ object PrivateUpdateSource {
 
     /** the signed-in account must already be a member: an invite preview is not enough to read the channel */
     fun resolve(account: Int, done: (Long?) -> Unit) {
+        if (INVITE_HASH.isEmpty()) {
+            AndroidUtilities.runOnUIThread { done(null) }
+            return
+        }
         val request = TLRPC.TL_messages_checkChatInvite().apply { hash = INVITE_HASH }
         ConnectionsManager.getInstance(account).sendRequest(request) { response, error ->
             AndroidUtilities.runOnUIThread {
